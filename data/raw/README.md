@@ -15,7 +15,7 @@ EACL, Short Papers.
 
 ## Stereotype seed dictionaries
 
-`Seed Dictionaries.csv` contains seed terms, parts of speech,
+`Seed_Dictionaries.csv` contains seed terms, parts of speech,
 WordNet sense numbers, and low/high directions for seven stereotype dimensions. We use Sociability and Morality for Warmth,
 and Ability and Agency for Competence.
 
