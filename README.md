@@ -8,8 +8,7 @@ Anonymous research materials accompanying the submission
 Constructs the 1,999 adjective antonym axes from WordNet 3.0 using
 NLTK and adds BabelDomains labels where available.
 
-- **Requirements:** Python 3.8+ and NLTK. The script downloads the
-  WordNet corpus if it is unavailable.
+- **Requirements:** Python 3.8+ and NLTK.
 - **Input:** `babeldomains_wordnet.txt`, containing BabelDomains
   labels for WordNet 3.0 synsets (Camacho-Collados & Navigli, 2017).
   Available at: http://lcl.uniroma1.it/babeldomains/
