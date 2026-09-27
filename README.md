@@ -28,4 +28,5 @@ NLTK and adds BabelDomains labels where available.
 Run:
 
 ```bash
-python build_antonym_axes.py --babel babeldomains_wordnet.txt --out antonym_axes.json
+mkdir -p data/processed
+python scripts/build_antonym_axes.py --babel data/raw/babeldomains_wordnet.txt --out data/processed/antonym_axes.json
