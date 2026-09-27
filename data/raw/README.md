@@ -12,5 +12,3 @@ and place it in this folder.
 **Source:** José Camacho-Collados and Roberto Navigli (2017).
 [BabelDomains: Large-Scale Domain Labeling of Lexical Resources](http://lcl.uniroma1.it/babeldomains/EACL2017_BabelDomains.pdf).
 EACL, Short Papers.
-
-**License:** [CC BY-NC 3.0](https://creativecommons.org/licenses/by-nc/3.0/).
