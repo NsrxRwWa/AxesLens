@@ -1,15 +1,16 @@
 # Raw data
 
-Place the original input resources in this folder.
-
 ## BabelDomains
 
-Download the WordNet 3.0 domain mappings from:
-http://lcl.uniroma1.it/babeldomains/
+`babeldomains_wordnet.txt` contains the WordNet domain annotations
+used by `scripts/build_antonym_axes.py`.
 
-Save the mapping file here as `babeldomains_wordnet.txt`.
+**Download:** Extract the file from the
+[BabelDomains package](http://lcl.uniroma1.it/babeldomains/)
+and place it in this folder.
 
-This file is used by `scripts/build_antonym_axes.py`
-to assign domain labels to the WordNet antonym poles.
+**Source:** José Camacho-Collados and Roberto Navigli (2017).
+[BabelDomains: Large-Scale Domain Labeling of Lexical Resources](http://lcl.uniroma1.it/babeldomains/EACL2017_BabelDomains.pdf).
+EACL, Short Papers.
 
-Source: Camacho-Collados and Navigli (2017).
+**License:** [CC BY-NC 3.0](https://creativecommons.org/licenses/by-nc/3.0/).
