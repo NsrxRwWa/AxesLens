@@ -19,9 +19,8 @@ EACL, Short Papers.
 WordNet sense numbers, and low/high directions for seven stereotype dimensions. We use Sociability and Morality for Warmth,
 and Ability and Agency for Competence.
 
-**Download:** Download the seed dictionary CSV from the
-[authors’ OSF project](https://osf.io/yx45f/overview)
-and place it in this folder.
+**Download:** Download the seed dictionary CSV from
+[OSF](https://osf.io/yx45f/overview) and place it in this folder.
 
 **Source:** Gandalf Nicolas, Xuechunzi Bai, and Susan T. Fiske (2021).
 [Comprehensive stereotype content dictionaries using a semi-automated method](https://doi.org/10.1002/ejsp.2724).
