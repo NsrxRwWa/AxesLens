@@ -17,8 +17,6 @@ NLTK and adds BabelDomains labels where available.
     formed from two WordNet IDs, the two synsets and their lemmas
     and definitions, and each pole's domain and confidence.
     Missing annotations are recorded as `Unknown`.
-  - `antonym_axes.json.manifest.json`: Resource versions,
-    file checksums, axis counts, and the ordering convention.
 - **Ordering:** `Pole_A` is the synset with the smaller WordNet
   offset; `Pole_B` is the other synset. Entries are sorted by
   the numeric offsets of `Pole_A`, then `Pole_B`. This provides
