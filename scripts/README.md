@@ -1,56 +1,74 @@
-### `build_antonym_axes.py`
+## Pipeline
 
-Constructs the 1,999 adjective antonym axes from WordNet 3.0 using
-NLTK and adds BabelDomains labels where available.
-
-- **Requirements:** Python 3.8+ and NLTK.
-- **Input:** `babeldomains_wordnet.txt`, containing BabelDomains
-  labels for WordNet 3.0 synsets (Camacho-Collados & Navigli, 2017).
-  Available at: http://lcl.uniroma1.it/babeldomains/
-- **Outputs:**
-  - `antonym_axes.json`: Each entry contains an axis identifier
-    formed from two WordNet IDs, the two synsets and their lemmas
-    and definitions, and each pole's domain and confidence.
-    Missing annotations are recorded as `Unknown`.
-- **Ordering:** `Pole_A` is the synset with the smaller WordNet
-  offset; `Pole_B` is the other synset. Entries are sorted by
-  the numeric offsets of `Pole_A`, then `Pole_B`. This provides
-  reproducible ordering for fixed inputs and resource versions.
-  Pole labels indicate orientation only, not evaluative valence.
-
-Run:
+Run the scripts in this order. All outputs go to `data/processed/`.
 
 ```bash
 mkdir -p data/processed
-python scripts/build_antonym_axes.py --babel data/raw/babeldomains_wordnet.txt --out data/processed/antonym_axes.json
 ```
-### `build_scm_axes.py`
 
-Constructs Warmth (Sociability + Morality) and Competence
-(Ability + Agency) axes by matching WordNet synsets to the
-Nicolas et al. (2021) seed dictionary.
+### `build_antonym_axes.py`
+Builds the 1,999 WordNet semantic axes (WordNet 3.0 via NLTK) with BabelDomains labels.
+Poles are ordered by WordNet offset, which is a fixed convention with no meaning.
 
-- **Requirements:** Python 3.8+. 
-- **Inputs:** `data/processed/antonym_axes.json`, containing the WordNet
-  antonym axes, and `data/raw/Seed_Dictionaries.csv`, containing seed
-  terms, sense numbers, dimensions, and low/high directions.
-  
-- **Outputs:**
-  - `warmth_axes.json`: Axes associated with Sociability or Morality.
-  - `competence_axes.json`: Axes associated with Ability or Agency.
-  Each entry preserves the original axis ID, synsets, lemmas,
-  definitions, domains, and confidence values.
-- **Selection:** An axis is retained when at least one pole
-  matches a seed synset in the relevant category. If only one
-  pole is labeled, its antonym receives the opposite direction.
-  Conflicting assignments are reported and excluded.
-- **Ordering:** The negative pole is the low pole; the positive
-  pole is the high pole. Synsets and pole metadata are ordered
-  from negative to positive. Original axis IDs and entry order
-  are preserved.
+Input: `data/raw/babeldomains_wordnet.txt` 
 
 Run:
-
 ```bash
-python scripts/build_scm_axes.py --axes data/processed/antonym_axes.json --seed data/raw/Seed_Dictionaries.csv --out-dir data/processed
+python scripts/build_antonym_axes.py \
+    --babel data/raw/babeldomains_wordnet.txt \
+    --out data/processed/antonym_axes.json
 ```
+
+### `build_scm_axes.py`
+Selects the Warmth (Sociability + Morality) and Competence (Ability + Agency) semantic axes
+with the stereotype seed dictionary of Nicolas et al. (2021), oriented from low to high pole.
+
+Input:
+- `data/processed/antonym_axes.json` (from `build_antonym_axes.py`)
+- `data/raw/Seed_Dictionaries.csv` (stereotype seed dictionary of Nicolas et al., 2021)
+
+Run:
+```bash
+python scripts/build_scm_axes.py \
+    --axes data/processed/antonym_axes.json \
+    --seed data/raw/Seed_Dictionaries.csv \
+    --out-dir data/processed
+```
+Output: `warmth_axes.json` (57 axes), `competence_axes.json` (43 axes).
+
+### `build_probing_data.py`
+Builds the probing dataset: labeled template sentences for both poles of every semantic axis.
+Each axis has its own seed, so it always gets the same sentences.
+
+Input: `data/processed/antonym_axes.json`
+
+Run (example: Listing templates, 30 sentences per pole, as in the paper):
+```bash
+python scripts/build_probing_data.py \
+    --axes data/processed/antonym_axes.json \
+    --template-type listing --n 30 \
+    --out data/processed/probing_listing_n30.json
+```
+Options: `--template-type listing|simple`, `--n 15|30` (sentences per pole), `--seed 42`.
+Output: `probing_<template>_n<n>.json`
+
+### `build_geometric_axes.py`
+Recovers the geometric axis of every semantic axis in every attention head and layer, for
+mean-over-tokens and last-token activations, with the variance ratio of each.
+Needs a GPU; saves checkpoints and resumes after interruptions.
+
+Input: `data/processed/probing_<template>_n<n>.json` (from `build_probing_data.py`)
+
+Run (example for the probing dataset above):
+```bash
+python scripts/build_geometric_axes.py \
+    --model NousResearch/Meta-Llama-3-8B-Instruct \
+    --data data/processed/probing_listing_n30.json \
+    --out-dir checkpoints
+```
+Options: `--model NousResearch/Meta-Llama-3-8B-Instruct|mistralai/Mistral-7B-Instruct-v0.1`.
+Output: `head_mean`, `head_last`, `layer_mean`, `layer_last` (`.npz`) for that model and
+configuration. Add `--hf-repo <user>/<repo>` to upload them to Hugging Face (needs `HF_TOKEN`).
+
+`pipeline_utils.py` contains the shared model and tokenizer loaders and must be in
+the same folder as `build_geometric_axes.py`.
