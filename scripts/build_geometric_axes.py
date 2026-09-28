@@ -1,10 +1,4 @@
 """Find a geometric axis for every semantic axis, per attention head and per layer.
-
-Usage:
-  python 2-theta.py --model NousResearch/Meta-Llama-3-8B-Instruct \
-      --data probing_listing_n30.json \
-      --out-dir /content/drive/MyDrive/axeslens_checkpoints \
-      --hf-repo <user>/axeslens-directions
 """
 import argparse
 import json
