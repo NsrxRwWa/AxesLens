@@ -24,7 +24,9 @@ Files: `<model>/<template>_n<n>/<level>_<position>.npz`
 Each file contains `axis_keys` (WordNet 3.0 IDs of the semantic axes), `scores` (variance
 ratios) and `directions` (geometric axes).
 
-Example: variance-ratio heatmap of one semantic axis.
+<details>
+<summary><b>Example: variance-ratio heatmap of one semantic axis</b></summary>
+
 ```python
 import numpy as np, matplotlib.pyplot as plt, seaborn as sns
 from huggingface_hub import hf_hub_download
@@ -35,7 +37,7 @@ path = hf_hub_download("NsrxRwWa/AxesLens",
 d = np.load(path)
 i = list(d["axis_keys"]).index("a00249721-a00251809")   # timid.a.01 - bold.a.01
 
-S = np.sort(d["scores"][i], axis=1)[:, ::-1]            # (32 layers, 32 heads), heads sorted per layer
+S = np.sort(d["scores"][i], axis=1)[:, ::-1]            # heads sorted per layer
 sns.heatmap(S[::-1], cmap="viridis_r", vmin=0, vmax=2.0, xticklabels=False,
             yticklabels=list(range(31, -1, -1)))        # layer 0 at the bottom
 plt.xlabel("Head (sorted)"); plt.ylabel("Layer")
@@ -43,9 +45,11 @@ plt.title("timid.a.01 - bold.a.01")
 plt.show()
 ```
 
-Output:
+<p align="center">
+  <img src="docs/Llama-3-8B-Instruct-listing-n30-mean.png" width="380" alt="Variance-ratio heatmap of timid.a.01 - bold.a.01">
+</p>
 
-![Variance-ratio heatmap of timid.a.01 - bold.a.01](docs/Llama-3-8B-Instruct-listing-n30-mean.png)
+</details>
 
 ## Repository structure
 - `scripts/`: pipeline for building the semantic axes, probing datasets and geometric axes
