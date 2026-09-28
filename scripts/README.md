@@ -60,7 +60,6 @@ python scripts/build_geometric_axes.py \
 ```
 Options: `--model NousResearch/Meta-Llama-3-8B-Instruct|mistralai/Mistral-7B-Instruct-v0.1`.
 Output: `head_mean`, `head_last`, `layer_mean`, `layer_last` (`.npz`) for that model and
-configuration. Add `--hf-repo <user>/<repo>` to upload them to Hugging Face (needs `HF_TOKEN`).
-
+configuration. 
 `pipeline_utils.py` contains the shared model and tokenizer loaders and must be in
 the same folder as `build_geometric_axes.py`.
