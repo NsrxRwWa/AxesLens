@@ -11,6 +11,10 @@ AxesLens recovers each semantic axis (a pair of antonymous WordNet synsets, e.g.
 *cowardly* vs. *brave*) as a geometric axis in the attention heads of an LLM, and rates
 concepts (e.g. social groups) by their projections onto it.
 
+## Installation
+```bash
+pip install -r requirements.txt
+```
 ## Recovered geometric axes
 
 The geometric axes for all 1,999 WordNet semantic axes are available on Hugging Face:
