@@ -1,21 +1,10 @@
-"""Find a direction (geometric axis) for every semantic axis, per attention head and per layer.
+"""Find a geometric axis for every semantic axis, per attention head and per layer.
 
-One forward pass per sentence gives all four results at once:
-  head_mean, head_last    (attention-head outputs, 32 x 32 heads)
-  layer_mean, layer_last  (residual stream, 32 layers; the layer-level baseline)
-For each axis and each head/layer it stores:
-  score     = between-class / within-class variance ratio
-  direction = mean(positive sentences) - mean(negative sentences)
-
-Usage (Colab):
+Usage:
   python 2-theta.py --model NousResearch/Meta-Llama-3-8B-Instruct \
       --data probing_listing_n30.json \
       --out-dir /content/drive/MyDrive/axeslens_checkpoints \
       --hf-repo <user>/axeslens-directions
-
-Checkpoints: results are saved every --chunk-size axes; a restarted run skips finished
-chunks. At the end the chunks are merged into four .npz files, uploaded to the
-Hugging Face dataset repo (if --hf-repo is given), and the local copies are removed.
 """
 import argparse
 import json
