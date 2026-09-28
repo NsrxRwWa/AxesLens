@@ -33,25 +33,22 @@ path = hf_hub_download("NsrxRwWa/AxesLens",
                        "Meta-Llama-3-8B-Instruct/listing_n30/head_mean.npz",
                        repo_type="dataset")
 d = np.load(path)
-keys = list(d["axis_keys"])
-i = keys.index("a00249721-a00251809")                # bold.a.01 | timid.a.01
+i = list(d["axis_keys"]).index("a00249721-a00251809")   # timid.a.01 - bold.a.01
 
-S = d["scores"][i]                                   # (32 layers, 32 heads)
-S_sorted = np.flipud(np.sort(S, axis=1)[:, ::-1])    # sort heads per layer, layer 0 at the bottom
-plt.figure(figsize=(8, 6))
-sns.heatmap(S_sorted, cmap="viridis_r", vmin=0, vmax=2.0, xticklabels=False,
-            yticklabels=list(reversed(range(32))), cbar_kws={"extend": "max"})
+S = np.sort(d["scores"][i], axis=1)[:, ::-1]            # (32 layers, 32 heads), heads sorted per layer
+sns.heatmap(S[::-1], cmap="viridis_r", vmin=0, vmax=2.0, xticklabels=False,
+            yticklabels=list(range(31, -1, -1)))        # layer 0 at the bottom
 plt.xlabel("Head (sorted)"); plt.ylabel("Layer")
-plt.title(keys[i])
+plt.title("timid.a.01 - bold.a.01")
 plt.show()
 ```
 
 Output:
 
-![Variance-ratio heatmap of bold.a.01 | timid.a.01](docs/heatmap_example.png)
+![Variance-ratio heatmap of timid.a.01 - bold.a.01](docs/Llama-3-8B-Instruct-listing-n30-mean.png)
 
 ## Repository structure
-- `docs/`: overview figure and example heatmap
 - `scripts/`: pipeline for building the semantic axes, probing datasets and geometric axes
   (see `scripts/README.md`)
 - `data/`: raw inputs and processed data (see `data/README.md`)
+- `docs/`: overview figure and example heatmap
