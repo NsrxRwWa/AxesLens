@@ -1,11 +1,4 @@
 """Build the probing dataset: labeled template sentences for both poles of every semantic axis.
-
-Usage:
-  python 1-data.py --axes wordnet_semantic_axes.json --template-type listing --n 30
-
-Each axis gets its own random generator (seed + axis key), so an axis always gets the
-same sentences, regardless of which file it is in or in which order it is processed.
-Output: probing_<template-type>_n<n>.json
 """
 import argparse
 import json
