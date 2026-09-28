@@ -1,35 +1,5 @@
 """
-Shared utilities for the antonym-direction pipeline.
-
-Centralizes the bits that were duplicated across:
-  - 2-main_dim_class_meandifference_baseline.py
-  - 2-main_dim_class_meandifference_ratio.py
-  - 10-classification_baseline.py
-  - 10-classification.py
-
-What's here:
-  * HF token loading (env var preferred)
-  * CLI arg helpers
-  * Path resolution (DATA_DIR / RESULTS_DIR)
-  * Model + tokenizer loader
-  * Token-finding helper (one function for both adjective and target lookups)
-  * Layer-level activation extraction (residual stream, model.layers.{i})
-  * Head-level activation extraction (per-head, self_attn.head_out)
-  * Direction (mean diff), projection, and accuracy helpers
-  * JSON axis loader
-
-NaN fix:
-  * the model is loaded in bfloat16 by default (Llama-3's native dtype). float16
-    overflows (>65504 -> inf -> NaN) on some prompts.
-  * hooked activations are upcast to float32 before .numpy() and token pooling.
-  * every extracted prompt is checked for NaN/inf and the offending prompt and
-    layers are reported (on_nonfinite="raise" | "warn").
-
-Behavioral note (option 1):
-  The layer-level extractor preserves the original behavior — when target_words
-  is provided it uses them, otherwise it falls back to mean/last per the
-  token_position argument. The original baselines always passed target_words,
-  so they continue to behave exactly as before.
+Shared utilities.
 """
 
 import os
