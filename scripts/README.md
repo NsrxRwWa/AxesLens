@@ -1,11 +1,3 @@
-## Pipeline
-
-Run the scripts in this order. All outputs go to `data/processed/`.
-
-```bash
-mkdir -p data/processed
-```
-
 ### `build_antonym_axes.py`
 Builds the 1,999 WordNet semantic axes (WordNet 3.0 via NLTK) with BabelDomains labels.
 Poles are ordered by WordNet offset, which is a fixed convention with no meaning.
