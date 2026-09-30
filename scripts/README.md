@@ -15,9 +15,7 @@ python scripts/build_antonym_axes.py \
 Selects the Warmth (Sociability + Morality) and Competence (Ability + Agency) semantic axes
 with the stereotype seed dictionary of Nicolas et al. (2021), oriented from low to high pole.
 
-Input:
-- `data/processed/antonym_axes.json` (from `build_antonym_axes.py`)
-- `data/raw/Seed_Dictionaries.csv` (stereotype seed dictionary of Nicolas et al., 2021)
+Input: `data/processed/antonym_axes.json` (from `build_antonym_axes.py`) and  `data/raw/Seed_Dictionaries.csv` (stereotype seed dictionary of Nicolas et al., 2021)
 
 Run:
 ```bash
@@ -63,3 +61,18 @@ Output: `head_mean`, `head_last`, `layer_mean`, `layer_last` (`.npz`) for that m
 configuration. 
 `pipeline_utils.py` contains the shared model and tokenizer loaders and must be in
 the same folder as `build_geometric_axes.py`.
+
+### `predict_positions.py`
+Position prediction of social groups on the Warmth and Competence semantic axes (RQ1).
+The sign of a group's projection onto a geometric axis gives the predicted label (+1/-1),
+For Warmth and Competence the poles must point
+from the low pole to the high pole (e.g. unfriendly to friendly). Therefore, it compares each
+axis in `warmth_axes.json` / `competence_axes.json` with `antonym_axes.json` and reverses the
+geometric axis (multiplies it by -1) wherever the two orders differ. 
+
+Input: `data/raw/WCST-final-dataset.xlsx` (sheets `Dev` and `Test`) and `data/processed/warmth_axes.json`, `competence_axes.json`, `antonym_axes.json` and the geometric axes, downloaded automatically from the Hugging Face dataset and cached
+
+Run:
+```bash
+python scripts/predict_positions.py test --head listing_n15 mean 128 --layer listing_n15 mean 4
+```
