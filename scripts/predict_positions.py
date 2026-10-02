@@ -18,7 +18,7 @@ PROMPTS = [
 MODELS = {"Meta-Llama-3-8B-Instruct": {"hf": "NousResearch/Meta-Llama-3-8B-Instruct", "backend": "hf"},
           "Mistral-7B-Instruct-v0.1": {"hf": "mistralai/Mistral-7B-Instruct-v0.1", "backend": "hf"},
           "Qwen3-8B": {"hf": "Qwen/Qwen3-8B", "backend": "hf"}}
-DEFAULT_MODELS = ["Meta-Llama-3-8B-Instruct", "Mistral-7B-Instruct-v0.1"]
+DEFAULT_MODELS = ["Meta-Llama-3-8B-Instruct", "Mistral-7B-Instruct-v0.1", "Qwen3-8B"]
 CONFIGS = ["listing_n30", "listing_n15", "simple_n30", "simple_n15"]
 POSITIONS = ["mean"]
 HEAD_KS = [1, 8, 16, 32, 64, 128, 256, 512, 1024]          # Llama / Mistral: 1024 heads
@@ -610,7 +610,7 @@ def main():
                     help="Excel files and figures (default: ./results in the current directory)")
     ap.add_argument("--cache-dir", default="/content/cache" if os.path.isdir("/content") else "cache",
                     help="large intermediate files: activations and axis cache")
-    ap.add_argument("--wcst", default="data/raw/WCST-final-dataset.xlsx")
+    ap.add_argument("--wcst", default="data/raw/WCST_dataset.xlsx")
     ap.add_argument("--warmth", default="data/processed/warmth_axes.json")
     ap.add_argument("--competence", default="data/processed/competence_axes.json")
     ap.add_argument("--base", default="data/processed/antonym_axes.json")
@@ -638,7 +638,7 @@ def main():
     ap.add_argument("--head", nargs=3, metavar=("CONFIG", "POSITION", "K"),
                     default=["listing_n15", "mean", "128"], help="test: head-level setting")
     ap.add_argument("--layer", nargs=3, metavar=("CONFIG", "POSITION", "K"),
-                    default=["listing_n15", "mean", "4"], help="test: layer-level setting")
+                    default=["listing_n15", "mean", "8"], help="test: layer-level setting")
     args = ap.parse_args()
     args.head_level_map = dict(x.split("=", 1) for x in args.head_level)
     os.makedirs(args.out_dir, exist_ok=True)
