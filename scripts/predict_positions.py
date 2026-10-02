@@ -14,12 +14,35 @@ PROMPTS = [
     "Consider the following: {c}\nGive a brief description.",
     "{c}\nHow would you describe the above in a few words?",
 ]
-MODELS = {"Meta-Llama-3-8B-Instruct": "NousResearch/Meta-Llama-3-8B-Instruct",
-          "Mistral-7B-Instruct-v0.1": "mistralai/Mistral-7B-Instruct-v0.1"}
+
+MODELS = {"Meta-Llama-3-8B-Instruct": {"hf": "NousResearch/Meta-Llama-3-8B-Instruct", "backend": "hf"},
+          "Mistral-7B-Instruct-v0.1": {"hf": "mistralai/Mistral-7B-Instruct-v0.1", "backend": "hf"},
+          "Qwen3-8B": {"hf": "Qwen/Qwen3-8B", "backend": "hf"}}
+DEFAULT_MODELS = ["Meta-Llama-3-8B-Instruct", "Mistral-7B-Instruct-v0.1"]
 CONFIGS = ["listing_n30", "listing_n15", "simple_n30", "simple_n15"]
 POSITIONS = ["mean"]
-K_VALUES = {"head": [1, 8, 16, 32, 64, 128, 256, 512, 1024], "layer": [1, 2, 4, 8, 16, 32]}
-N_HEADS = 32
+HEAD_KS = [1, 8, 16, 32, 64, 128, 256, 512, 1024]          # Llama / Mistral: 1024 heads
+LAYER_KS = [1, 2, 4, 8, 16, 32]                            # Llama / Mistral: 32 layers
+K_VALUES = {"head": HEAD_KS, "linhead": HEAD_KS, "allhead": HEAD_KS, "layer": LAYER_KS}
+# Models with more heads / layers get their own lists, ending at their full size:
+MODEL_K_VALUES = {
+    "Qwen3-8B": {"head": HEAD_KS + [1152],                 # Qwen3-8B: 36 layers x 32 heads = 1152
+                 "layer": LAYER_KS + [36]},                # Qwen3-8B: 36 layers
+}
+
+
+def ks_for(short, level):
+    """k values for one model and level."""
+    return MODEL_K_VALUES.get(short, {}).get(level, K_VALUES[level])
+
+
+# a "level" is read from one or more stored activation groups:
+#   head     softmax-attention heads (all layers in Llama / Mistral; 8 of 32 layers in Qwen3.5-9B)
+#   linhead  Gated DeltaNet heads (Qwen3.5 only)
+#   allhead  both kinds of heads, ranked together by variance ratio
+#   layer    residual stream
+LEVEL_GROUPS = {"head": ["head"], "linhead": ["linhead"], "allhead": ["head", "linhead"],
+                "layer": ["layer"]}
 METRIC = "macro_f1"
 N_PERM = 1000                                 # label permutations for the chance-level test
 
@@ -49,104 +72,210 @@ def load_axes(warmth_file, competence_file, base_file):
 
 
 # ----------------------------------------------------------------------------- step 1: extract
-def extract(args):
-    import torch
-    from baukit import TraceDict
-    from tqdm.auto import tqdm
-    import pipeline_utils as pu
+def meta_path(args, short):
+    return f"{args.cache_dir}/activations/{short}_meta.json"
 
+
+def read_meta(args, short):
+    """{group: {"n_heads": H, ...}} of the stored activations. Caches written before this
+    file existed (Llama / Mistral) have 32 heads per layer and one 'head' per layer."""
+    try:
+        with open(meta_path(args, short)) as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return {"head": {"n_heads": 32}, "layer": {"n_heads": 1}}
+
+
+def levels_of(args, short):
+    groups = read_meta(args, short)
+    return [lv for lv, g in LEVEL_GROUPS.items() if all(x in groups for x in g)]
+
+
+def check_terms(args, short, n_terms):
+    """Stop early if the cached activations were made from a different term list."""
+    p = f"{args.cache_dir}/activations/{short}_layer_{POSITIONS[0]}.npy"
+    if os.path.exists(p):
+        n = np.load(p, mmap_mode="r").shape[0]
+        if n != n_terms:
+            raise SystemExit(f"{p} has {n} terms but {args.wcst} has {n_terms}: the cached "
+                             f"activations are from another dataset. Move "
+                             f"{args.cache_dir}/activations away and run 'extract' again.")
+
+
+def extract(args):
     terms = load_terms(args.wcst)["term"].tolist()
     items = [(t, p, PROMPTS[p].format(c=term)) for t, term in enumerate(terms)
              for p in range(len(PROMPTS))]
     os.makedirs(f"{args.cache_dir}/activations", exist_ok=True)
 
-    for short, name in MODELS.items():
+    for short in args.models:
+        name, backend = MODELS[short]["hf"], MODELS[short]["backend"]
+        done = os.path.exists(meta_path(args, short)) or backend == "custom_llama"
+        groups = list(read_meta(args, short)) if done else ["head", "layer"]
         paths = {f"{lv}_{pos}": f"{args.cache_dir}/activations/{short}_{lv}_{pos}.npy"
-                 for lv in ["head", "layer"] for pos in POSITIONS}
-        if all(os.path.exists(p) for p in paths.values()):
+                 for lv in groups for pos in POSITIONS}
+        if done and all(os.path.exists(p) for p in paths.values()):
+            check_terms(args, short, len(terms))
             print(f"{short}: activations exist, skipped")
             continue
-        tok = pu.load_tokenizer(name)
-        if tok.pad_token is None:
-            tok.pad_token = tok.eos_token
-        tok.padding_side = "right"                  # real tokens never see the padding
-        model = pu.load_model(name)                 # bfloat16, as for the geometric axes
-        L = model.config.num_hidden_layers
-        names = {"head": [f"model.layers.{i}.self_attn.head_out" for i in range(L)],
-                 "layer": [f"model.layers.{i}" for i in range(L)]}
-        dim = model.config.hidden_size
-        out = {k: np.lib.format.open_memmap(p + ".tmp", mode="w+", dtype=np.float32,
-                                            shape=(len(terms), len(PROMPTS), L, dim))
-               for k, p in paths.items()}
-        device = model.get_input_embeddings().weight.device
+        (extract_custom_llama if backend == "custom_llama" else extract_hf)(args, short, name, terms, items)
 
-        for s in tqdm(range(0, len(items), args.batch_size), desc=short):
-            batch = items[s:s + args.batch_size]
-            enc = tok([x[2] for x in batch], return_tensors="pt", padding=True).to(device)
-            mask = enc["attention_mask"][:, None, :, None].float()
-            last = enc["attention_mask"].sum(1) - 1
-            rows = torch.arange(len(batch), device=device)
-            with torch.no_grad(), TraceDict(model, names["head"] + names["layer"]) as ret:
-                model(**enc)
-                for lv in ["head", "layer"]:
-                    acts = torch.stack([(ret[n].output[0] if isinstance(ret[n].output, tuple)
-                                         else ret[n].output).float() for n in names[lv]], dim=1)
-                    res = {"mean": (acts * mask).sum(2) / mask.sum(2),
-                           "last": acts[rows, :, last]}
-                    for pos in POSITIONS:
-                        a = res[pos].cpu().numpy()
-                        if not np.isfinite(a).all():
-                            raise FloatingPointError(f"Non-finite activations ({lv}, {pos})")
-                        for b, (t, p, _) in enumerate(batch):
-                            out[f"{lv}_{pos}"][t, p] = a[b]
-        for k, p in paths.items():
-            out[k].flush()
-            del out[k]
-            os.replace(p + ".tmp", p)
-        print(f"{short}: saved activations to {args.cache_dir}/activations/")
-        del model
-        torch.cuda.empty_cache()
+
+def extract_hf(args, short, name, terms, items):
+    """Stock Hugging Face model (Qwen3.5): heads via hooks on the output projections."""
+    import torch
+    from tqdm.auto import tqdm
+    import hf_model_utils_qwen as hu
+
+    tok = hu.load_tokenizer(name)
+    model = hu.load_model(name)                     # bfloat16, as for the geometric axes
+    points = hu.tracepoints(model)
+    meta = hu.describe(points)
+    pool = hu.PooledActivations(model, points, POSITIONS)
+    paths = {f"{lv}_{pos}": f"{args.cache_dir}/activations/{short}_{lv}_{pos}.npy"
+             for lv in meta for pos in POSITIONS}
+    def shape(k):
+        g = meta[k.rsplit("_", 1)[0]]
+        return len(terms), len(PROMPTS), len(g["layers"]), g["n_heads"] * g["head_dim"]
+    out = {k: np.lib.format.open_memmap(p + ".tmp", mode="w+", dtype=np.float32, shape=shape(k))
+           for k, p in paths.items()}
+    device = hu.input_device(model)
+    for s in tqdm(range(0, len(items), args.batch_size), desc=short):
+        batch = items[s:s + args.batch_size]
+        enc = tok([x[2] for x in batch], return_tensors="pt", padding=True).to(device)
+        acts = pool(model, enc)
+        for k in paths:
+            for b, (t, p, _) in enumerate(batch):
+                out[k][t, p] = acts[k][b]
+    for k, p in paths.items():
+        out[k].flush()
+        del out[k]
+        os.replace(p + ".tmp", p)
+    with open(meta_path(args, short), "w") as f:
+        json.dump(meta, f, indent=1)
+    print(f"{short}: saved activations to {args.cache_dir}/activations/")
+    pool.close()
+    del model
+    torch.cuda.empty_cache()
+
+
+def extract_custom_llama(args, short, name, terms, items):
+
+    import torch
+    from baukit import TraceDict
+    from tqdm.auto import tqdm
+    import pipeline_utils as pu
+
+    paths = {f"{lv}_{pos}": f"{args.cache_dir}/activations/{short}_{lv}_{pos}.npy"
+             for lv in ["head", "layer"] for pos in POSITIONS}
+    tok = pu.load_tokenizer(name)
+    if tok.pad_token is None:
+        tok.pad_token = tok.eos_token
+    tok.padding_side = "right"                  # real tokens never see the padding
+    model = pu.load_model(name)                 # bfloat16, as for the geometric axes
+    L = model.config.num_hidden_layers
+    names = {"head": [f"model.layers.{i}.self_attn.head_out" for i in range(L)],
+             "layer": [f"model.layers.{i}" for i in range(L)]}
+    dim = model.config.hidden_size
+    out = {k: np.lib.format.open_memmap(p + ".tmp", mode="w+", dtype=np.float32,
+                                        shape=(len(terms), len(PROMPTS), L, dim))
+           for k, p in paths.items()}
+    device = model.get_input_embeddings().weight.device
+
+    for s in tqdm(range(0, len(items), args.batch_size), desc=short):
+        batch = items[s:s + args.batch_size]
+        enc = tok([x[2] for x in batch], return_tensors="pt", padding=True).to(device)
+        mask = enc["attention_mask"][:, None, :, None].float()
+        last = enc["attention_mask"].sum(1) - 1
+        rows = torch.arange(len(batch), device=device)
+        with torch.no_grad(), TraceDict(model, names["head"] + names["layer"]) as ret:
+            model(**enc)
+            for lv in ["head", "layer"]:
+                acts = torch.stack([(ret[n].output[0] if isinstance(ret[n].output, tuple)
+                                     else ret[n].output).float() for n in names[lv]], dim=1)
+                res = {"mean": (acts * mask).sum(2) / mask.sum(2),
+                       "last": acts[rows, :, last]}
+                for pos in POSITIONS:
+                    a = res[pos].cpu().numpy()
+                    if not np.isfinite(a).all():
+                        raise FloatingPointError(f"Non-finite activations ({lv}, {pos})")
+                    for b, (t, p, _) in enumerate(batch):
+                        out[f"{lv}_{pos}"][t, p] = a[b]
+    for k, p in paths.items():
+        out[k].flush()
+        del out[k]
+        os.replace(p + ".tmp", p)
+    heads = model.config.num_attention_heads
+    with open(meta_path(args, short), "w") as f:
+        json.dump({"head": {"layers": list(range(L)), "n_heads": heads, "head_dim": dim // heads},
+                   "layer": {"layers": list(range(L)), "n_heads": 1, "head_dim": dim}}, f, indent=1)
+    print(f"{short}: saved activations to {args.cache_dir}/activations/")
+    del model
+    torch.cuda.empty_cache()
 
 
 # ----------------------------------------------------------------------------- geometric axes
-def get_axes(args, short, config, level, pos, axes):
-    """Scores and geometric axes of the Warmth + Competence axes, oriented low -> high."""
-    cache = f"{args.cache_dir}/axes/{short}_{config}_{level}_{pos}.npz"
+def get_group_axes(args, short, config, group, pos, axes):
+    """Scores and geometric axes of the Warmth + Competence axes, oriented low -> high.
+    Read from --axes-dir if build_geometric_axes(_hf).py wrote them there, else from --repo."""
+    cache = f"{args.cache_dir}/axes/{short}_{config}_{group}_{pos}.npz"
     if not os.path.exists(cache):
-        from huggingface_hub import hf_hub_download
         os.makedirs(f"{args.cache_dir}/axes", exist_ok=True)
-        path = hf_hub_download(args.repo, f"{short}/{config}/{level}_{pos}.npz", repo_type="dataset")
+        local = f"{args.axes_dir}/{short}_{config}_{group}_{pos}.npz" if args.axes_dir else None
+        if local and os.path.exists(local):
+            path = local
+        else:
+            from huggingface_hub import hf_hub_download
+            path = hf_hub_download(args.repo, f"{short}/{config}/{group}_{pos}.npz", repo_type="dataset")
         d = np.load(path)
         idx = [list(d["axis_keys"]).index(k) for k in axes["key"]]
         dirs = d["directions"][idx]
         dirs[axes["flip"].to_numpy()] *= -1                 # point from low to high pole
         np.savez(cache, scores=d["scores"][idx], directions=dirs)
         del d
-        os.remove(os.path.realpath(path))                   # free the disk
+        if path != local:
+            os.remove(os.path.realpath(path))               # free the disk
     d = np.load(cache)
     return d["scores"], d["directions"]
 
 
+def get_axes(args, short, config, level, pos, axes):
+    """[(scores, directions)] for each activation group of the level."""
+    return [get_group_axes(args, short, config, g, pos, axes) for g in LEVEL_GROUPS[level]]
+
+
 def load_acts(args, short, level, pos, rows, prompt=None):
-    """(N, L, H, D) activations of the given terms, averaged over prompts (or one prompt)."""
-    a = np.load(f"{args.cache_dir}/activations/{short}_{level}_{pos}.npy", mmap_mode="r")[rows]
-    a = a.mean(1) if prompt is None else a[:, prompt]
-    n, L, dim = a.shape
-    h = N_HEADS if level == "head" else 1
-    return a.reshape(n, L, h, dim // h).astype(np.float64)
+    """[(N, L, H, D)] activations of the given terms for each group of the level,
+    averaged over prompts (or one prompt)."""
+    meta = read_meta(args, short)
+    out = []
+    for g in LEVEL_GROUPS[level]:
+        a = np.load(f"{args.cache_dir}/activations/{short}_{g}_{pos}.npy", mmap_mode="r")[rows]
+        a = a.mean(1) if prompt is None else a[:, prompt]
+        n, L, dim = a.shape
+        h = meta[g]["n_heads"]
+        out.append(a.reshape(n, L, h, dim // h).astype(np.float64))
+    return out
 
 
 # ----------------------------------------------------------------------------- evaluation
-def project_axis(A, theta, score, ks):
-    """Top-k projections of all concepts on one semantic axis, for each k -> {k: (N,)}."""
-    theta = theta.astype(np.float64)
-    norm2 = (theta ** 2).sum(-1)
-    usable = np.isfinite(score) & np.isfinite(theta).all(-1) & (norm2 > 0)
-    proj = np.einsum("nlhd,lhd->nlh", A, theta) / np.where(usable, norm2, 1.0)
-    mu, sd = proj.mean(0), proj.std(0)
-    z = np.where(sd > 1e-6 * np.maximum(1.0, np.abs(mu)), (proj - mu) / np.where(sd > 0, sd, 1), 0.0)
-    order = np.argsort(np.where(usable, score, -np.inf).ravel())[::-1][:int(usable.sum())]
-    cum = np.cumsum(z.reshape(len(A), -1)[:, order], axis=1)
+def project_axis(groups, ks):
+    """Top-k projections of all concepts on one semantic axis, for each k -> {k: (N,)}.
+    groups: [(A (N, L, H, D), theta (L, H, D), score (L, H))]; with several groups (allhead),
+    all their heads are ranked together by variance ratio."""
+    zs, ss = [], []
+    for A, theta, score in groups:
+        theta = theta.astype(np.float64)
+        norm2 = (theta ** 2).sum(-1)
+        usable = np.isfinite(score) & np.isfinite(theta).all(-1) & (norm2 > 0)
+        proj = np.einsum("nlhd,lhd->nlh", A, theta) / np.where(usable, norm2, 1.0)
+        mu, sd = proj.mean(0), proj.std(0)
+        z = np.where(sd > 1e-6 * np.maximum(1.0, np.abs(mu)), (proj - mu) / np.where(sd > 0, sd, 1), 0.0)
+        zs.append(z.reshape(len(A), -1))
+        ss.append(np.where(usable, score, -np.inf).ravel())
+    z, s = np.concatenate(zs, 1), np.concatenate(ss)
+    order = np.argsort(s)[::-1][:int(np.isfinite(s).sum())]
+    cum = np.cumsum(z[:, order], axis=1)
     return {k: cum[:, min(k, len(order)) - 1] / min(k, len(order)) for k in ks}
 
 
@@ -176,28 +305,38 @@ def baselines(terms):
                          for c in ["Warmth", "Competence"]]).round(4)
 
 
-def evaluate(A, scores, dirs, axes, terms, ks):
-    """Per-axis macro-F1 for every k, against the axis category's labels."""
+def evaluate(A, ax_groups, axes, terms, ks):
+    """Per-axis macro-F1 for every k, against the axis category's labels.
+    A: [(N, L, H, D)] per group; ax_groups: [(scores, directions)] per group."""
     out = []
     for j, ax in enumerate(axes.itertuples()):
         y = terms[ax.category].to_numpy()
-        for k, p in project_axis(A, dirs[j], scores[j], ks).items():
+        groups = [(a, dirs[j], scores[j]) for a, (scores, dirs) in zip(A, ax_groups)]
+        for k, p in project_axis(groups, ks).items():
             out.append({"key": ax.key, "axis": ax.axis, "category": ax.category,
                         "k": k, METRIC: macro_f1(p, y)})
     return out
+
+
+def head_level(args, short):
+    """Which head level a model uses for the main results (--head-level MODEL=LEVEL)."""
+    return args.head_level_map.get(short, "head")
 
 
 # ----------------------------------------------------------------------------- step 2: select
 def select(args, terms, axes):
     dev = terms[terms.split == args.split]
     rows = []
-    for short in MODELS:
-        for level in ["head", "layer"]:
+    for short in args.models:
+        for level in args.levels:
+            if level not in levels_of(args, short):
+                print(f"  {short}: no '{level}' activations, skipped")
+                continue
             for pos in POSITIONS:
                 A = load_acts(args, short, level, pos, dev.index.to_numpy())
                 for config in CONFIGS:
-                    scores, dirs = get_axes(args, short, config, level, pos, axes)
-                    for r in evaluate(A, scores, dirs, axes, dev, K_VALUES[level]):
+                    ax_groups = get_axes(args, short, config, level, pos, axes)
+                    for r in evaluate(A, ax_groups, axes, dev, ks_for(short, level)):
                         rows.append({"model": short, "level": level, "config": config,
                                      "position": pos, **r})
                     print(f"  {short} {level} {config} {pos} done")
@@ -237,7 +376,7 @@ def read_baselines(path):
 def plot_selection_from_excel(path, split):
     summary = pd.read_excel(path, sheet_name="summary")
     base = read_baselines(path)
-    for level in ["head", "layer"]:
+    for level in summary.level.unique():
         plot_selection(summary[summary.level == level], level, split, base,
                        path.replace(".xlsx", f"_{level}.png"))
 
@@ -246,21 +385,24 @@ def plot_selection(summary, level, split, base, path):
     import matplotlib.pyplot as plt
     colors = {"listing_n30": "#1f3a68", "listing_n15": "#6f94d6",
               "simple_n30": "#b5532f", "simple_n15": "#e6ac3a"}
-    fig, axs = plt.subplots(2, 2, figsize=(11, 7.5))
+    models = list(summary.model.unique())
+    fig, axs = plt.subplots(2, len(models), figsize=(5.5 * len(models), 7.5), squeeze=False)
     for r, cat in enumerate(["Warmth", "Competence"]):
-        for c, model in enumerate(MODELS):
+        for c, model in enumerate(models):
             ax = axs[r, c]
+            ks = sorted(summary[summary.model == model]["k"].unique())   # this model's k values
             for config in CONFIGS:
                 for pos in POSITIONS:
                     s = summary[(summary.model == model) & (summary.category == cat)
-                                & (summary.config == config) & (summary.position == pos)]
-                    ax.plot(range(len(s)), s[METRIC], marker="o", ms=4, color=colors[config],
+                                & (summary.config == config) & (summary.position == pos)].sort_values("k")
+                    ax.plot([ks.index(k) for k in s["k"]], s[METRIC], marker="o", ms=4,
+                            color=colors[config],
                             label=f"{config.replace('_n', ', n=').capitalize()}")
-            ax.set_xticks(range(len(K_VALUES[level])), K_VALUES[level])
+            ax.set_xticks(range(len(ks)), [int(k) for k in ks])
             if cat in base:
                 ax.axhline(base[cat], color="gray", ls=":", lw=1)
             ax.set_title(f"{cat} - {model}")
-            ax.set_xlabel(f"ensemble size k ({level}s)")
+            ax.set_xlabel(f"ensemble size k ({'layers' if level == 'layer' else 'heads'})")
             ax.set_ylabel(f"macro-F1 ({split})")
             ax.grid(alpha=0.3)
     handles, labels = axs[0, 0].get_legend_handles_labels()
@@ -274,13 +416,18 @@ def plot_selection(summary, level, split, base, path):
 # ----------------------------------------------------------------------------- step 3: prompts
 def prompts(args, terms, axes):
     dev = terms[terms.split == args.split]
-    tag = args.split.lower()
+    # --prompt-level head (default) or layer; output: prompts_dev.xlsx / prompts_dev_layer.xlsx
+    tag = args.split.lower() + ("" if args.prompt_level == "head" else "_layer")
     rows = []
-    for short in MODELS:
-        scores, dirs = get_axes(args, short, args.config, "head", args.position, axes)
+    for short in args.models:
+        level = head_level(args, short) if args.prompt_level == "head" else "layer"
+        ax_groups = get_axes(args, short, args.config, level, args.position, axes)
+        n_units = sum(s[0].size for s, _ in ax_groups)   # all heads / all layers of this model
+        k = n_units if args.k == "all" else int(args.k)
+        print(f"  {short}: {level}, {args.config}, {args.position}, k={k} of {n_units}")
         for p in list(range(len(PROMPTS))) + [None]:
-            A = load_acts(args, short, "head", args.position, dev.index.to_numpy(), prompt=p)
-            for r in evaluate(A, scores, dirs, axes, dev, [args.k]):
+            A = load_acts(args, short, level, args.position, dev.index.to_numpy(), prompt=p)
+            for r in evaluate(A, ax_groups, axes, dev, [k]):
                 rows.append({"model": short, "prompt": f"q{p + 1}" if p is not None else "Avg.", **r})
     df = pd.DataFrame(rows)
     labels = [f"q{i + 1}" for i in range(len(PROMPTS))] + ["Avg."]
@@ -289,7 +436,8 @@ def prompts(args, terms, axes):
     path = f"{args.out_dir}/prompts_{tag}.xlsx"
     with pd.ExcelWriter(path) as xl:
         overview.to_excel(xl, sheet_name="overview")
-        pd.DataFrame({"config": [args.config], "position": [args.position], "k": [args.k],
+        pd.DataFrame({"level": [args.prompt_level], "config": [args.config],
+                      "position": [args.position], "k": [args.k],
                       "split": [args.split]}).to_excel(xl, sheet_name="setting", index=False)
         df.to_excel(xl, sheet_name="per_axis", index=False)
         baselines(dev).to_excel(xl, sheet_name="baselines", index=False)
@@ -308,9 +456,10 @@ def plot_prompts_from_excel(path, seed=42):
     rng = np.random.default_rng(seed)
     lo = np.floor((df[METRIC].min() - 0.02) * 10) / 10
     hi = np.ceil((df[METRIC].max() + 0.02) * 10) / 10
-    fig, axs = plt.subplots(2, 2, figsize=(10.5, 8), sharey=True)
+    models = list(df.model.unique())
+    fig, axs = plt.subplots(2, len(models), figsize=(5.25 * len(models), 8), sharey=True, squeeze=False)
     for r, cat in enumerate(["Warmth", "Competence"]):
-        for c, model in enumerate(MODELS):
+        for c, model in enumerate(models):
             ax = axs[r, c]
             data = [df[(df.model == model) & (df.category == cat) & (df.prompt == q)][METRIC]
                     for q in labels]
@@ -359,6 +508,7 @@ def holm(pvals):
 
 
 def test(args, terms, axes):
+    from itertools import combinations
     from scipy.stats import wilcoxon
     tst = terms[terms.split == args.split]
     tag = args.split.lower()
@@ -368,15 +518,17 @@ def test(args, terms, axes):
     per_axis, preds = [], {}
     for level, (config, pos, k) in [("head", args.head), ("layer", args.layer)]:
         k = int(k)
-        for short in MODELS:
-            scores, dirs = get_axes(args, short, config, level, pos, axes)
-            A = load_acts(args, short, level, pos, tst.index.to_numpy())
+        for short in args.models:
+            source = head_level(args, short) if level == "head" else "layer"
+            ax_groups = get_axes(args, short, config, source, pos, axes)
+            A = load_acts(args, short, source, pos, tst.index.to_numpy())
             for j, ax in enumerate(axes.itertuples()):
-                p = project_axis(A, dirs[j], scores[j], [k])[k]
+                groups = [(a, dirs[j], scores[j]) for a, (scores, dirs) in zip(A, ax_groups)]
+                p = project_axis(groups, [k])[k]
                 preds[(level, short, ax.key)] = np.where(p > 0, 1, -1)
-                per_axis.append({"level": level, "model": short, "config": config,
-                                 "position": pos, "k": k, "key": ax.key, "axis": ax.axis,
-                                 "category": ax.category,
+                per_axis.append({"level": level, "model": short, "source": source,
+                                 "config": config, "position": pos, "k": k, "key": ax.key,
+                                 "axis": ax.axis, "category": ax.category,
                                  METRIC: macro_f1(p, tst[ax.category].to_numpy())})
     df = pd.DataFrame(per_axis)
 
@@ -388,8 +540,8 @@ def test(args, terms, axes):
         y = tst[cat].to_numpy()
         p_perm, chance = permutation_p([preds[(level, model, k)] for k in g["key"]], y,
                                        f1.mean(), rng)
-        summary.append({"level": level, "model": model, "category": cat, "n_axes": len(f1),
-                        METRIC: f1.mean(),
+        summary.append({"level": level, "model": model, "source": g["source"].iloc[0],
+                        "category": cat, "n_axes": len(f1), METRIC: f1.mean(),
                         "ci_low": np.percentile(boot, 2.5), "ci_high": np.percentile(boot, 97.5),
                         "chance_macro_f1": chance, "p_vs_chance_permutation": p_perm,
                         "majority_macro_f1": majority[cat],
@@ -415,17 +567,18 @@ def test(args, terms, axes):
     print("\nHead vs. layer (paired one-sided Wilcoxon over axes, Holm-corrected):")
     print(hl.to_string(index=False))
 
-    # agreement between Human, Llama and Mistral (head level), all as macro-F1
-    m1, m2 = MODELS
+    # agreement between Human and every model, and between every pair of models (head level)
     agree = []
     for cat in ["Warmth", "Competence"]:
         keys = axes[axes.category == cat]["key"]
         y = tst[cat].to_numpy()
-        agree.append({"category": cat,
-                      f"Human-{m1}": np.mean([macro_f1(preds[("head", m1, k)], y) for k in keys]),
-                      f"Human-{m2}": np.mean([macro_f1(preds[("head", m2, k)], y) for k in keys]),
-                      f"{m1}-{m2}": np.mean([macro_f1(preds[("head", m1, k)], preds[("head", m2, k)])
-                                             for k in keys])})
+        row = {"category": cat}
+        for m in args.models:
+            row[f"Human-{m}"] = np.mean([macro_f1(preds[("head", m, k)], y) for k in keys])
+        for m1, m2 in combinations(args.models, 2):
+            row[f"{m1}-{m2}"] = np.mean([macro_f1(preds[("head", m1, k)], preds[("head", m2, k)])
+                                         for k in keys])
+        agree.append(row)
     agree = pd.DataFrame(agree).round(3)
     print("\nPairwise agreement (head level, macro-F1):")
     print(agree.to_string(index=False))
@@ -462,17 +615,32 @@ def main():
     ap.add_argument("--competence", default="data/processed/competence_axes.json")
     ap.add_argument("--base", default="data/processed/antonym_axes.json")
     ap.add_argument("--repo", default="NsrxRwWa/AxesLens")
+    ap.add_argument("--axes-dir", default=None,
+                    help="folder with geometric axes from build_geometric_axes(_hf).py "
+                         "(<model>_<config>_<level>_<position>.npz); used before --repo")
+    ap.add_argument("--models", nargs="+", default=DEFAULT_MODELS, choices=list(MODELS),
+                    help="models to run (default: Llama and Mistral, as in the paper; "
+                         "add Qwen3-8B / Qwen3.5-9B explicitly)")
+    ap.add_argument("--levels", nargs="+", default=["head", "layer"], choices=list(LEVEL_GROUPS),
+                    help="select: levels to compare (linhead / allhead exist for Qwen3.5 only)")
+    ap.add_argument("--head-level", nargs="*", default=[], metavar="MODEL=LEVEL",
+                    help="prompts/test: head level per model, e.g. Qwen3.5-9B=allhead "
+                         "(default: head)")
     ap.add_argument("--batch-size", type=int, default=32)
     ap.add_argument("--split", choices=["Dev", "Test"], default=None,
                     help="terms to evaluate (default: Dev for select/prompts, Test for test)")
     ap.add_argument("--config", default="listing_n15", help="prompts: configuration")
     ap.add_argument("--position", default="mean", help="prompts: token position")
-    ap.add_argument("--k", type=int, default=128, help="prompts: number of heads")
+    ap.add_argument("--k", default="128",
+                    help="prompts: number of heads (or layers); 'all' = every one of that model")
+    ap.add_argument("--prompt-level", choices=["head", "layer"], default="head",
+                    help="prompts: run the prompt ablation on heads or on the layer baseline")
     ap.add_argument("--head", nargs=3, metavar=("CONFIG", "POSITION", "K"),
                     default=["listing_n15", "mean", "128"], help="test: head-level setting")
     ap.add_argument("--layer", nargs=3, metavar=("CONFIG", "POSITION", "K"),
                     default=["listing_n15", "mean", "4"], help="test: layer-level setting")
     args = ap.parse_args()
+    args.head_level_map = dict(x.split("=", 1) for x in args.head_level)
     os.makedirs(args.out_dir, exist_ok=True)
 
     if args.step == "extract":
@@ -482,6 +650,8 @@ def main():
     args.split = args.split or ("Test" if args.step == "test" else "Dev")
     print(f"Evaluating on: {args.split}")
     terms, axes = load_terms(args.wcst), load_axes(args.warmth, args.competence, args.base)
+    for short in args.models:
+        check_terms(args, short, len(terms))
     print(f"{len(terms)} terms ({(terms.split == 'Dev').sum()} Dev, {(terms.split == 'Test').sum()} Test), "
           f"{(axes.category == 'Warmth').sum()} Warmth + {(axes.category == 'Competence').sum()} "
           f"Competence axes ({axes.flip.sum()} flipped to low -> high)")
