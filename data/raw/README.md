@@ -28,11 +28,6 @@ and Ability and Agency for Competence.
 
 ## Social group terms (WCST)
 
-`WCST-final-dataset.xlsx` contains the 540 social group terms (429 unigrams, 111 multiword)
-used for position prediction (RQ1) in `scripts/predict_positions.py`. Sheet `Dev` (270 terms)
-and sheet `Test` (270 terms) are stratified by the four Warmth x Competence sign quadrants.
-Columns: `term`, `W sign (+1/-1)` (Warmth), `C sign (+1/-1)` (Competence).
-
 We built it from the [Words of Warmth lexicon](https://saifmohammad.com/WebPages/warmth.html):
 social group mentions were identified with `claude-fable-5-1` plus manual review, slurs and
 multi-sense terms were removed, and the human Warmth and Competence scores were binarized
@@ -41,3 +36,14 @@ by their sign.
 **Source:** Saif M. Mohammad (2025).
 [Words of Warmth: Trust and Sociability Norms for over 26k English Words](https://aclanthology.org/2025.acl-long.922/).
 ACL (Volume 1: Long Papers), pages 18830-18850.
+
+## Stereotypicality identification
+
+Used for stereotypicality identification in `scripts/identify_stereotypical_axes.py`.
+
+- `social_groups.txt`: the 50 social groups, one per line.
+- `random_phrases.txt`: the 50 frequency-matched random phrases, one per line.
+- `stereotypicality_annotations.csv`: human annotations of the 100 stratified semantic axes
+  (one row per axis, 5 annotators). Each axis was rated for one social group.
+
+
