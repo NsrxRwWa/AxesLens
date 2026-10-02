@@ -1,0 +1,101 @@
+axis_id,negative_pole,positive_pole,axis,social_group,annotator_1,annotator_2,annotator_3,annotator_4,annotator_5,n_not_applicable,applicable,n_below,n_neutral,n_above,majority,stereotypical
+a00025238-a00025728,acidic.a.01,alkaline.a.01,acidic - alkaline,Muslim people,NA,NA,NA,NA,NA,5,no,0,0,0,NA,NA
+a00067966-a00068278,ill-advised.a.01,well-advised.a.01,ill-advised - well-advised,liberals,4,NA,NA,1,2,2,yes,2,0,1,below,yes
+a00104051-a00105023,unambitious.a.01,ambitious.a.01,unambitious - ambitious,upper class people,NA,5,5,5,5,1,yes,0,0,4,above,yes
+a00166146-a00169164,unattractive.a.01,attractive.a.01,unattractive - attractive,men,NA,4,4,2,1,1,yes,2,0,2,tie,no
+a00198904-a00199569,following.a.03,leading.a.03,following - leading,refugees,NA,NA,1,2,3,2,yes,2,1,0,below,yes
+a00249721-a00251809,timid.a.01,bold.a.01,timid - bold,Jewish people,3,5,NA,4,3,1,yes,0,2,2,tie,no
+a00259568-a00261245,lower-class.a.01,upper-class.a.01,lower-class - upper-class,uneducated people,3,1,2,1,1,0,yes,4,1,0,below,yes
+a00262792-a00264776,cowardly.a.01,brave.a.01,cowardly - brave,transgender people,5,4,5,4,5,0,yes,0,0,5,above,yes
+a00278551-a00283703,dull.a.02,bright.a.01,dull - bright,transgender people,3,2,4,4,4,0,yes,1,1,3,above,yes
+a00286578-a00287640,narrow-minded.a.02,broad-minded.a.02,narrow-minded - broad-minded,immigrants,5,2,5,5,2,0,yes,2,0,3,above,yes
+a00309021-a00311663,careless.a.01,careful.a.01,careless - careful,blue-collar workers,NA,5,4,2,2,1,yes,2,0,2,tie,no
+a00329831-a00331446,central.a.02,peripheral.a.01,central - peripheral,managers,NA,2,NA,1,NA,3,no,2,0,0,NA,NA
+a00362467-a00364479,depressing.a.01,cheerful.a.01,depressing - cheerful,scientists,3,3,2,2,2,0,yes,3,2,0,below,yes
+a00417413-a00419289,dirty.a.01,clean.a.01,dirty - clean,Christian people,NA,3,NA,NA,2,3,no,1,1,0,NA,NA
+a00438707-a00439588,stupid.a.01,smart.a.01,stupid - smart,Asian people,NA,5,NA,5,5,2,yes,0,0,3,above,yes
+a00445548-a00446921,close.a.02,distant.a.02,close - distant,rich people,NA,5,4,4,5,1,yes,0,0,4,above,yes
+a00476819-a00478015,uncomfortable.a.01,comfortable.a.02,uncomfortable - comfortable,Hindu people,NA,3,2,NA,3,2,yes,1,2,0,neutral,yes
+a00502180-a00503321,loose.a.01,compact.a.01,loose - compact,billionaires,4,NA,4,5,NA,2,yes,0,0,3,above,yes
+a00510050-a00511214,incompetent.a.01,competent.a.03,incompetent - competent,intellectuals,4,5,4,4,4,0,yes,0,0,5,above,yes
+a00584820-a00586183,destructive.a.01,constructive.a.01,destructive - constructive,working class people,3,2,4,5,5,0,yes,1,1,3,above,yes
+a00605516-a00606602,unconventional.a.02,conventional.a.01,unconventional - conventional,welfare recipients,NA,2,2,4,3,1,yes,2,1,1,tie,no
+a00633410-a00633778,wrong.a.02,right.a.04,wrong - right,homeless people,NA,3,NA,3,3,2,yes,0,3,0,neutral,yes
+a00638981-a00639356,inconsiderate.a.01,considerate.a.01,inconsiderate - considerate,refugees,NA,2,NA,2,2,2,yes,3,0,0,below,yes
+a00684480-a00685483,indecisive.a.02,decisive.a.01,indecisive - decisive,welfare recipients,2,2,NA,2,3,1,yes,3,1,0,below,yes
+a00734318-a00737246,destroyed.a.01,preserved.a.02,destroyed - preserved,professors,3,NA,NA,4,NA,3,no,0,1,1,NA,NA
+a00744916-a00749230,difficult.a.01,easy.a.01,difficult - easy,engineers,NA,NA,4,4,NA,3,no,0,0,2,NA,NA
+a00754107-a00754873,negligent.a.01,diligent.a.02,negligent - diligent,working class people,4,2,4,4,4,0,yes,1,0,4,above,yes
+a00760916-a00762355,indirect.a.04,direct.a.03,indirect - direct,career women,4,5,4,4,5,0,yes,0,0,5,above,yes
+a00778363-a00778509,proximal.a.01,distal.a.01,proximal - distal,women,NA,NA,NA,NA,NA,5,no,0,0,0,NA,NA
+a00791227-a00792991,subordinate.a.01,dominant.a.01,subordinate - dominant,traditional women,1,1,2,1,1,0,yes,5,0,0,below,yes
+a00800248-a00800826,dull.a.09,sharp.a.09,dull - sharp,Asian people,NA,2,2,4,5,1,yes,2,0,2,tie,no
+a00862327-a00863049,theoretical.a.02,applied.a.01,theoretical - applied,Hispanic people,NA,NA,5,4,NA,3,no,0,0,2,NA,NA
+a00863946-a00864693,unemployed.a.01,employed.a.01,unemployed - employed,CEOs,5,5,5,5,5,0,yes,0,0,5,above,yes
+a00958880-a00959731,unfaithful.a.01,faithful.a.01,unfaithful - faithful,unemployed people,NA,3,2,4,3,1,yes,1,2,1,tie,no
+a00976508-a00980527,slow.a.01,fast.a.01,slow - fast,intellectuals,3,5,NA,2,5,1,yes,1,1,2,tie,no
+a01001689-a01002377,sterile.a.01,fertile.a.01,sterile - fertile,atheists,3,NA,4,NA,5,2,yes,0,1,2,above,yes
+a01025913-a01026262,uncompromising.a.01,compromising.a.01,uncompromising - compromising,men,1,2,4,2,2,0,yes,4,0,1,below,yes
+a01047874-a01049462,unfortunate.a.01,fortunate.a.01,unfortunate - fortunate,disabled people,1,1,1,1,1,0,yes,5,0,0,below,yes
+a01074650-a01076793,unfriendly.a.02,friendly.a.01,unfriendly - friendly,nurses,NA,3,5,4,4,1,yes,0,1,3,above,yes
+a01099536-a01100082,unspecified.a.01,specified.a.01,unspecified - specified,doctors,NA,NA,4,2,NA,3,no,1,0,1,NA,NA
+a01111016-a01112573,stingy.a.01,generous.a.01,stingy - generous,White people,NA,5,2,1,3,1,yes,2,1,1,tie,no
+a01146493-a01147044,ungrateful.a.01,grateful.a.01,ungrateful - grateful,drug addicts,1,1,1,1,3,0,yes,4,1,0,below,yes
+a01150915-a01152746,hard.a.03,soft.a.01,hard - soft,LGBTQ people,3,NA,5,2,NA,2,yes,1,1,1,tie,no
+a01159655-a01160031,harmless.a.01,harmful.a.01,harmless - harmful,Black people,NA,4,NA,4,3,2,yes,0,1,2,above,yes
+a01178974-a01180695,earthly.a.01,heavenly.a.03,earthly - heavenly,Hispanic people,NA,NA,NA,4,3,3,no,0,1,1,NA,NA
+a01184932-a01186408,light.a.05,heavy.a.04,light - heavy,Hindu people,NA,2,NA,NA,NA,4,no,1,0,0,NA,NA
+a01188058-a01188328,light-duty.a.01,heavy-duty.a.01,light-duty - heavy-duty,middle class people,3,NA,4,1,NA,2,yes,1,1,1,tie,no
+a01222360-a01222884,dishonest.a.01,honest.a.01,dishonest - honest,undocumented immigrants,NA,2,1,1,2,1,yes,4,0,0,below,yes
+a01232635-a01233347,horizontal.a.01,vertical.a.01,horizontal - vertical,traditional women,NA,NA,NA,NA,NA,5,no,0,0,0,NA,NA
+a01261867-a01262611,inhumane.a.01,humane.a.02,inhumane - humane,agnostics,3,3,NA,5,5,1,yes,0,2,2,tie,no
+a01275562-a01279978,unimportant.a.01,important.a.01,unimportant - important,conservatives,3,3,2,4,4,0,yes,1,2,2,tie,no
+a01326148-a01326917,segregated.a.01,integrated.a.03,segregated - integrated,liberals,3,NA,NA,2,2,2,yes,2,1,0,below,yes
+a01382086-a01391351,small.a.01,large.a.01,small - large,believers,NA,NA,NA,4,NA,4,no,0,0,1,NA,NA
+a01421077-a01421491,illiterate.a.03,literate.a.02,illiterate - literate,Christian people,NA,4,4,NA,2,2,yes,1,0,2,above,yes
+a01430111-a01430847,illogical.a.01,logical.a.01,illogical - logical,believers,2,2,1,2,1,0,yes,5,0,0,below,yes
+a01433493-a01436003,short.a.06,long.a.05,short - long,White people,NA,NA,4,4,NA,3,no,0,0,2,NA,NA
+a01450969-a01451498,lost.a.03,saved.a.01,lost - saved,scientists,NA,NA,4,4,NA,3,no,0,0,2,NA,NA
+a01483324-a01484083,masculine.a.01,feminine.a.02,masculine - feminine,elderly people,3,3,4,2,3,0,yes,1,3,1,neutral,yes
+a01493173-a01493897,green.a.03,ripe.a.01,green - ripe,skeptics,NA,NA,NA,5,NA,4,no,0,0,1,NA,NA
+a01508719-a01509527,mild.a.01,intense.a.01,mild - intense,Muslim people,NA,4,4,NA,5,2,yes,0,0,3,above,yes
+a01548193-a01549291,immoral.a.01,moral.a.01,immoral - moral,poor people,NA,4,NA,5,3,2,yes,0,1,2,above,yes
+a01600333-a01602330,south.a.01,north.a.01,south - north,poor people,NA,NA,NA,4,NA,4,no,0,0,1,NA,NA
+a01663571-a01664581,pessimistic.a.01,optimistic.a.01,pessimistic - optimistic,gay people,NA,3,1,2,3,1,yes,2,2,0,tie,no
+a01711071-a01713095,painless.a.02,painful.a.01,painless - painful,Democrats,NA,NA,NA,NA,2,4,no,1,0,0,NA,NA
+a01749320-a01752167,imperfect.a.01,perfect.a.01,imperfect - perfect,housewives,3,2,2,2,3,0,yes,3,2,0,below,yes
+a01817500-a01818234,negative.a.05,positive.a.08,negative - positive,Jewish people,NA,4,NA,4,3,2,yes,0,1,2,above,yes
+a01825671-a01827535,powerless.a.01,powerful.a.01,powerless - powerful,billionaires,5,5,5,5,5,0,yes,0,0,5,above,yes
+a01839829-a01840366,retarded.a.01,precocious.a.01,retarded - precocious,CEOs,5,4,5,4,1,0,yes,1,0,4,above,yes
+a01889256-a01892953,humble.a.02,proud.a.01,humble - proud,career women,5,5,2,4,5,0,yes,1,0,4,above,yes
+a01904845-a01905377,impure.a.02,pure.a.06,impure - pure,disabled people,3,NA,5,5,4,1,yes,0,1,3,above,yes
+a01911683-a01912613,untrained.a.01,trained.a.01,untrained - trained,Black people,NA,2,2,2,3,1,yes,3,1,0,below,yes
+a01918984-a01919931,quiet.a.02,noisy.a.01,quiet - noisy,unemployed people,NA,4,2,4,3,1,yes,1,1,2,tie,no
+a01943406-a01944660,unreasonable.a.01,reasonable.a.01,unreasonable - reasonable,rich people,NA,2,5,2,1,1,yes,3,0,1,below,yes
+a01959294-a01960656,irregular.a.01,regular.a.01,irregular - regular,managers,2,5,2,2,4,0,yes,3,0,2,below,yes
+a02021905-a02022953,poor.a.02,rich.a.01,poor - rich,gay people,3,2,4,4,3,0,yes,1,2,2,tie,no
+a02030080-a02030935,left.a.04,right.a.07,left - right,homeless people,NA,NA,2,4,3,2,yes,1,1,1,tie,no
+a02071420-a02073113,dissimilar.a.01,similar.a.01,dissimilar - similar,immigrants,NA,NA,1,4,1,2,yes,2,0,1,below,yes
+a02073443-a02074092,insane.a.01,sane.a.01,insane - sane,Democrats,3,3,NA,4,4,1,yes,0,2,2,tie,no
+a02080577-a02082218,unsatisfactory.a.01,satisfactory.a.01,unsatisfactory - satisfactory,feminists,NA,NA,2,2,4,2,yes,2,0,1,below,yes
+a02103481-a02105375,insensitive.a.02,sensitive.a.02,insensitive - sensitive,Republicans,NA,3,NA,4,5,2,yes,0,1,2,above,yes
+a02118379-a02120458,frivolous.a.01,serious.a.01,frivolous - serious,housewives,NA,5,2,4,5,1,yes,1,0,3,above,yes
+a02125797-a02126889,unsettled.a.01,settled.a.01,unsettled - settled,feminists,1,2,2,1,1,0,yes,5,0,0,below,yes
+a02236842-a02238462,rough.a.01,smooth.a.01,rough - smooth,Republicans,NA,NA,NA,4,1,3,no,1,0,1,NA,NA
+a02314584-a02315002,straight.a.08,curved.a.01,straight - curved,professors,3,NA,1,5,NA,2,yes,1,1,1,tie,no
+a02321009-a02324397,weak.a.01,strong.a.01,weak - strong,nurses,5,2,4,4,5,0,yes,1,0,4,above,yes
+a02335828-a02336449,insufficient.a.01,sufficient.a.01,insufficient - sufficient,uneducated people,NA,NA,NA,2,1,3,no,2,0,0,NA,NA
+a02338615-a02340213,inferior.a.01,superior.a.02,inferior - superior,elderly people,3,4,4,4,3,0,yes,0,2,3,above,yes
+a02368336-a02368787,sweet.a.01,sour.a.02,sweet - sour,engineers,NA,NA,NA,2,NA,4,no,1,0,0,NA,NA
+a02371718-a02373599,asymmetrical.a.01,symmetrical.a.01,asymmetrical - symmetrical,middle class people,NA,NA,NA,4,NA,4,no,0,0,1,NA,NA
+a02388145-a02389220,tame.a.02,wild.a.01,tame - wild,blue-collar workers,3,NA,5,2,4,1,yes,1,1,2,tie,no
+a02392878-a02393401,tasteless.a.02,tasteful.a.01,tasteless - tasteful,conservatives,3,3,1,4,2,0,yes,2,2,1,tie,no
+a02436341-a02436622,intolerant.a.01,tolerant.a.01,intolerant - tolerant,skeptics,4,2,NA,1,4,1,yes,2,0,2,tie,no
+a02494594-a02494716,downtown.a.01,uptown.a.01,downtown - uptown,doctors,NA,4,NA,2,NA,3,no,1,0,1,NA,NA
+a02539968-a02540236,unwelcome.a.01,welcome.a.01,unwelcome - welcome,upper class people,4,5,4,4,3,0,yes,0,1,4,above,yes
+a02540578-a02541302,ill.a.01,well.a.01,ill - well,LGBTQ people,3,NA,2,4,3,1,yes,1,2,1,tie,no
+a02564986-a02566015,unwilling.a.01,willing.a.01,unwilling - willing,atheists,4,2,5,4,3,0,yes,1,1,3,above,yes
+a02569130-a02570282,foolish.a.01,wise.a.01,foolish - wise,women,5,3,NA,4,3,1,yes,0,2,2,tie,no
+a02580449-a02584699,worn.a.01,new.a.06,worn - new,undocumented immigrants,NA,NA,NA,2,NA,4,no,1,0,0,NA,NA
+a02584981-a02588099,unworthy.a.01,worthy.a.01,unworthy - worthy,drug addicts,2,2,2,1,2,0,yes,5,0,0,below,yes
+a02685539-a02686159,intracellular.a.01,extracellular.a.01,intracellular - extracellular,agnostics,NA,NA,NA,2,NA,4,no,1,0,0,NA,NA
