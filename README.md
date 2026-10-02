@@ -21,7 +21,7 @@ The geometric axes for all 1,999 WordNet semantic axes are available on Hugging 
 https://huggingface.co/datasets/NsrxRwWa/AxesLens
 
 Files: `<model>/<template>_n<n>/<level>_<position>.npz`
-- model: `Meta-Llama-3-8B-Instruct` | `Mistral-7B-Instruct-v0.1`
+- model: `Meta-Llama-3-8B-Instruct` | `Mistral-7B-Instruct-v0.1` | `Qwen3-8B`
 - template, n: `listing` | `simple`; `15` | `30` sentences per pole
 - level, position: `head` | `layer`; `mean` (mean-over-tokens) | `last` (last-token)
 
