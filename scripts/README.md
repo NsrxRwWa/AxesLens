@@ -43,9 +43,7 @@ Options: `--template-type listing|simple`, `--n 15|30` (sentences per pole), `--
 Output: `probing_<template>_n<n>.json`
 
 ### `build_geometric_axes.py`
-Recovers the geometric axis of every semantic axis in every attention head and layer, for
-mean-over-tokens and last-token activations, with the variance ratio of each.
-Needs a GPU; saves checkpoints and resumes after interruptions.
+Recovers the geometric axis of every semantic axis in every attention head and layer.
 
 Input: `data/processed/probing_<template>_n<n>.json` (from `build_probing_data.py`)
 
@@ -56,23 +54,24 @@ python scripts/build_geometric_axes.py \
     --data data/processed/probing_listing_n30.json \
     --out-dir checkpoints
 ```
-Options: `--model NousResearch/Meta-Llama-3-8B-Instruct|mistralai/Mistral-7B-Instruct-v0.1`.
-Output: `head_mean`, `head_last`, `layer_mean`, `layer_last` (`.npz`) for that model and
-configuration. 
-`pipeline_utils.py` contains the shared model and tokenizer loaders and must be in
-the same folder as `build_geometric_axes.py`.
+Options: `--model NousResearch/Meta-Llama-3-8B-Instruct|mistralai/Mistral-7B-Instruct-v0.1|Qwen/Qwen3-8B`.
+Output: `<model>_<template>_n<n>_{head,layer}_{mean,last}.npz` for that model and configuration.
+`hf_model_utils.py` (model loading and head/layer hooks) must be in the same folder.
 
 ### `predict_positions.py`
-Position prediction of social groups on the Warmth and Competence semantic axes (RQ1).
-The sign of a group's projection onto a geometric axis gives the predicted label (+1/-1),
-For Warmth and Competence the poles must point
-from the low pole to the high pole (e.g. unfriendly to friendly). Therefore, it compares each
-axis in `warmth_axes.json` / `competence_axes.json` with `antonym_axes.json` and reverses the
-geometric axis (multiplies it by -1) wherever the two orders differ. 
+Position prediction of social groups on the Warmth and Competence semantic axes.
 
-Input: `data/raw/WCST-final-dataset.xlsx` (sheets `Dev` and `Test`) and `data/processed/warmth_axes.json`, `competence_axes.json`, `antonym_axes.json` and the geometric axes, downloaded automatically from the Hugging Face dataset and cached
 
-Run:
+Input: `data/raw/WCST-final-dataset.xlsx` (sheets `Dev` and `Test`),
+`data/processed/warmth_axes.json`, `competence_axes.json`, `antonym_axes.json`, and the
+geometric axes (downloaded automatically from the Hugging Face dataset and cached, or read
+from `--axes-dir`).
+
+Run (final results, as in the paper):
 ```bash
-python scripts/predict_positions.py test --head listing_n15 mean 128 --layer listing_n15 mean 4
+MODELS="Meta-Llama-3-8B-Instruct Mistral-7B-Instruct-v0.1 Qwen3-8B"
+python scripts/predict_positions.py extract --models $MODELS
+python scripts/predict_positions.py test --models $MODELS \
+    --head listing_n15 mean 128 --layer listing_n15 mean 8
 ```
+
