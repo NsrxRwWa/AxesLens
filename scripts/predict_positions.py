@@ -125,7 +125,7 @@ def extract_hf(args, short, name, terms, items):
     """Stock Hugging Face model (Qwen3.5): heads via hooks on the output projections."""
     import torch
     from tqdm.auto import tqdm
-    import hf_model_utils_qwen as hu
+    import hf_model_utils as hu
 
     tok = hu.load_tokenizer(name)
     model = hu.load_model(name)                     # bfloat16, as for the geometric axes
