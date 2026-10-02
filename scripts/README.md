@@ -90,7 +90,7 @@ python scripts/identify_stereotypical_axes.py extract
 # 2. 100 stratified axes, compared with human labels
 python scripts/identify_stereotypical_axes.py test --axes stratified \
     --head listing_n15 mean 128 --layer listing_n15 mean 8
-# 3. all 1,999 axes (Benjamini-Hochberg correction)
+# 3. all 1,999 axes 
 python scripts/identify_stereotypical_axes.py test --axes all --correction bh \
     --head listing_n15 mean 128 --layer listing_n15 mean 8
 # optional: power analysis
