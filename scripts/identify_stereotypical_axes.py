@@ -279,9 +279,13 @@ def same_axis(pair):
 
 
 def plot_axes(df, proj, args, tag):
-    """Strip plot of social vs. random projections for the given semantic axes."""
+    """Strip plot of random phrases (top) vs. social groups (bottom) on one semantic axis, in the
+    style of the paper figure: vertical line = median, the two most extreme concepts of each set
+    are enlarged and labelled (random above, social groups below)."""
     import matplotlib.pyplot as plt
     os.makedirs(f"{args.out_dir}/plots", exist_ok=True)
+    sets = [("random", "Random", "#5b8fc7", "#2b4a9b", 1, 14),
+            ("social", "Social groups", "#d9475c", "#7a0f1d", 0, -16)]
     for pair in args.plot_axes:
         sel = df[df["pair"].map(same_axis(pair))]
         if sel.empty:
@@ -290,22 +294,37 @@ def plot_axes(df, proj, args, tag):
         for r in sel.itertuples():
             p = proj[(proj.model == r.model) & (proj.level == r.level) & (proj.k == r.k)
                      & (proj.key == r.key)]
-            fig, ax = plt.subplots(figsize=(6, 3.2))
+            fig, ax = plt.subplots(figsize=(4.6, 3.2))
             rng = np.random.default_rng(0)
-            for y, (which, color) in enumerate([("social", "crimson"), ("random", "steelblue")]):
-                v = p[p.set == which]
-                ax.scatter(v.projection, y + rng.normal(0, 0.05, len(v)), s=30, color=color, alpha=0.7)
-                ax.plot([v.projection.median()] * 2, [y - 0.2, y + 0.2], color=color, lw=2)
-                for i in (v.projection.idxmin(), v.projection.idxmax()):
-                    ax.annotate(v.concept[i], (v.projection[i], y), xytext=(0, 9),
-                                textcoords="offset points", ha="center", fontsize=8, color=color)
-            ax.set_yticks([0, 1], ["Social groups", "Random"])
-            ax.set_xlabel(f"projection onto {pair}")
-            ax.set_title(f"{r.model}, {r.level}, k={r.k}: KS D={r.ks_D:.3f}, p={r.ks_p:.1e}", fontsize=9)
+            lim = np.abs(p.projection).max() * 1.15
+            for which, label, col, dark, y, dy in sets:
+                v = p[p.set == which].reset_index(drop=True)
+                jit = y + rng.uniform(-0.12, 0.12, len(v))
+                ax.scatter(v.projection, jit, s=14, color=col, alpha=0.85, lw=0)
+                med = v.projection.median()
+                ax.plot([med, med], [y - 0.2, y + 0.2], color=col, lw=1.4)
+                for i, ha in ((v.projection.idxmin(), "left"), (v.projection.idxmax(), "right")):
+                    ax.scatter(v.projection[i], jit[i], s=55, color=dark, zorder=3)
+                    xt = -lim * 0.97 if ha == "left" else lim * 0.97
+                    ax.annotate(v.concept[i], (v.projection[i], jit[i]), xytext=(xt, y + dy / 40),
+                                ha=ha, va="center", fontsize=8.5, color=dark, fontweight="bold",
+                                bbox=dict(boxstyle="round,pad=0.25", fc="white", ec=col, lw=0.8))
+            ax.set_yticks([0, 1], ["Social groups", "Random"], fontsize=10)
+            ax.set_ylim(-0.7, 1.7)
+            ax.set_xlim(-lim, lim)
+            neg, pos = r.pair.split("|")          # projection > 0: closer to the second pole
+            ax.set_xlabel(f"\u2190 {neg.split('.')[0]}   Projection score   {pos.split('.')[0]} \u2192",
+                          fontsize=8.5)
+            ax.tick_params(axis="x", labelsize=7)
+            short = r.model.replace("Meta-", "").split("-")[0]
+            ax.set_title(f"{neg} vs. {pos} ({short}, k={r.k})\n"
+                         f"KS D={r.ks_D:.2f}, p={r.ks_p:.1e}", fontsize=8)
             fig.tight_layout()
-            out = f"{args.out_dir}/plots/{tag}_{r.model}_{r.level}_k{r.k}_{pair.replace('|', '_vs_')}.png"
-            fig.savefig(out, dpi=300)
+            out = f"{args.out_dir}/plots/{tag}_{r.model}_{r.level}_k{r.k}_{pair.replace('|', '_vs_')}"
+            fig.savefig(out + ".png", dpi=300)
+            fig.savefig(out + ".pdf")
             plt.close(fig)
+            print(f"  [plot] saved {out}.png")
 
 
 def plot_agreement(g, path, title, label_axes=None):
