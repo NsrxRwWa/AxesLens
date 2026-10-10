@@ -37,13 +37,13 @@ by their sign.
 [Words of Warmth: Trust and Sociability Norms for over 26k English Words](https://aclanthology.org/2025.acl-long.922/).
 ACL (Volume 1: Long Papers), pages 18830-18850.
 
-## Stereotypicality identification human
+## Stereotypicality identification 
 
 Used for stereotypicality identification in `scripts/identify_stereotypical_axes.py`.
 
 - `social_groups.txt`: the 50 social groups, one per line.
 - `random_phrases.txt`: the 50 frequency-matched random phrases, one per line.
-- `stereotypicality_annotations.csv`: human annotations of the 100 stratified semantic axes
+- `stereotypicality_annotations_human.csv`: human annotations of the 100 stratified semantic axes
   (one row per axis, 5 annotators). Each axis was rated for one social group.
 
 
