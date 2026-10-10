@@ -13,8 +13,12 @@ Same pipeline as predict_positions.py:
 
 Steps
   extract   activations of the social groups and random phrases (GPU)
-  test      KS test per semantic axis, on the 100 stratified axes (--axes stratified,
-            compared with the human annotations) or on all 1,999 axes (--axes all)
+  test      KS test per semantic axis on one axis set (--axes):
+              wc          the Warmth and Competence axes
+              stratified  the 100 annotated axes (compared with the human annotations;
+                          flag rates reported separately for applicable / not applicable)
+              eligible    the eligible pool of axes relevant to humans
+              all         all 1,999 WordNet axes
 
 The sensitivity power analysis of the KS test (Appendix E) is a separate script
 (sensitivity_analysis.py); it uses synthetic data and does not depend on this one.
@@ -22,7 +26,8 @@ The sensitivity power analysis of the KS test (Appendix E) is a separate script
 Usage
   python scripts/identify_stereotypical_axes.py extract --models Meta-Llama-3-8B-Instruct Mistral-7B-Instruct-v0.1 Qwen3-8B
   python scripts/identify_stereotypical_axes.py test --axes stratified --models ... --head listing_n15 mean 128
-  python scripts/identify_stereotypical_axes.py test --axes all --models ... --head listing_n15 mean 128
+  python scripts/identify_stereotypical_axes.py test --axes wc --models ... --head listing_n15 mean 128
+  python scripts/identify_stereotypical_axes.py test --axes eligible --models ... --head listing_n15 mean 128
 """
 import argparse
 import json
@@ -48,6 +53,44 @@ def read_antonym_axes(path):
     """{key: 'neg.a.NN|pos.a.NN'} for all 1,999 semantic axes."""
     pair = lambda text: text.splitlines()[0].split(": ", 1)[1].strip()
     return {k: pair(v) for k, v in json.load(open(path, encoding="utf-8")).items()}
+
+
+def read_axis_keys(paths, pairs):
+    """Axis keys from one or more JSON files ({key: ...} or [key, ...]), in file order."""
+    keys = []
+    for path in paths:
+        data = json.load(open(path, encoding="utf-8"))
+        keys += list(data.keys()) if isinstance(data, dict) else list(data)
+    keys = list(dict.fromkeys(keys))                      # drop duplicates, keep order
+    missing = [k for k in keys if k not in pairs]
+    if missing:
+        print(f"  warning: {len(missing)} keys not in antonym_axes.json, skipped: {missing[:5]}")
+    return [k for k in keys if k in pairs]
+
+
+def wilson(k, n, z=1.96):
+    """Wilson 95% confidence interval of a proportion k/n."""
+    if n == 0:
+        return np.nan, np.nan
+    p = k / n
+    centre = (p + z * z / (2 * n)) / (1 + z * z / n)
+    half = z * np.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / (1 + z * z / n)
+    return centre - half, centre + half
+
+
+def flag_rates(df, by=None):
+    """Share of axes identified as stereotypical, with Wilson 95% CIs, per model
+    (and per value of `by`, e.g. applicable vs. not applicable)."""
+    rows = []
+    groups = ["model", "level", "k"] + ([by] if by else [])
+    for key, g in df.groupby(groups, dropna=False):
+        n, kk = len(g), int(g["stereotypical"].sum())
+        lo, hi = wilson(kk, n)
+        row = dict(zip(groups, key if isinstance(key, tuple) else (key,)))
+        row.update({"n_axes": n, "n_stereotypical": kk, "flag_rate": kk / n,
+                    "ci_low": lo, "ci_high": hi, "median_D": g["ks_D"].median()})
+        rows.append(row)
+    return pd.DataFrame(rows)
 
 
 def read_human(path, neutral_is_stereotypical=True):
@@ -207,7 +250,15 @@ def agreement(df):
 def test(args):
     pairs = read_antonym_axes(args.base)
     human = read_human(args.human, not args.neutral_not_stereotypical) if args.axes == "stratified" else None
-    keys = list(human["key"]) if human is not None else list(pairs)
+    if args.axes == "stratified":
+        keys = list(human["key"])
+    elif args.axes == "wc":
+        keys = read_axis_keys(args.wc, pairs)
+    elif args.axes == "eligible":
+        keys = read_axis_keys([args.eligible], pairs)
+    else:
+        keys = list(pairs)
+    print(f"Axis set '{args.axes}': {len(keys)} axes")
     social_words, random_words = read_concepts(args.social), read_concepts(args.random)
     n_soc = len(social_words)
     settings = [("head", args.head)] + ([("layer", args.layer)] if args.layer else [])
@@ -250,8 +301,14 @@ def test(args):
     tag = f"{args.axes}"
     path = f"{args.out_dir}/stereotypicality_{tag}.xlsx"
     os.makedirs(args.out_dir, exist_ok=True)
+    if human is not None:
+        df["applicability"] = np.where(df["applicable"], "applicable", "not applicable")
+        rates = flag_rates(df, by="applicability")
+    else:
+        rates = flag_rates(df)
     with pd.ExcelWriter(path) as xl:
         counts.to_excel(xl, sheet_name="summary", index=False)
+        rates.round(3).to_excel(xl, sheet_name="flag_rates", index=False)
         if human is not None:
             agree = agreement(df).round(3)
             agree.to_excel(xl, sheet_name="agreement_with_humans", index=False)
@@ -260,6 +317,8 @@ def test(args):
                                   index=False)
     print(f"\nKS test (alpha={args.alpha}, {'Benjamini-Hochberg' if args.correction == 'bh' else 'uncorrected'}):")
     print(counts.round(3).to_string(index=False))
+    print("\nFlag rates (Wilson 95% CI):")
+    print(rates.round(3).to_string(index=False))
     if human is not None:
         print(f"\nAgreement with human annotations ({int(human['applicable'].sum())} applicable axes):")
         print(agree.to_string(index=False))
@@ -367,8 +426,12 @@ def plot_agreement(g, path, title, label_axes=None):
 def main():
     ap = argparse.ArgumentParser(description="Stereotypicality identification of semantic axes (KS test).")
     ap.add_argument("step", choices=["extract", "test"])
-    ap.add_argument("--axes", choices=["stratified", "all"], default="stratified",
-                    help="stratified: the 100 annotated axes (with human comparison); all: 1,999 axes")
+    ap.add_argument("--axes", choices=["wc", "stratified", "eligible", "all"], default="stratified",
+                    help="wc: Warmth and Competence axes; stratified: the 100 annotated axes "
+                         "(with human comparison); eligible: eligible pool; all: 1,999 axes")
+    ap.add_argument("--wc", nargs="+",
+                    default=["data/processed/warmth_axes.json", "data/processed/competence_axes.json"])
+    ap.add_argument("--eligible", default="data/processed/eligible_pool.json")
     ap.add_argument("--models", nargs="+", default=list(pp.MODELS), choices=list(pp.MODELS))
     ap.add_argument("--social", default="data/raw/social_groups.txt")
     ap.add_argument("--random", default="data/raw/random_phrases.txt")
