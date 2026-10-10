@@ -15,13 +15,14 @@ Steps
   extract   activations of the social groups and random phrases (GPU)
   test      KS test per semantic axis, on the 100 stratified axes (--axes stratified,
             compared with the human annotations) or on all 1,999 axes (--axes all)
-  power     post-hoc power and minimum detectable effect of the KS tests (from 'test')
+
+The sensitivity power analysis of the KS test (Appendix E) is a separate script
+(sensitivity_analysis.py); it uses synthetic data and does not depend on this one.
 
 Usage
   python scripts/identify_stereotypical_axes.py extract --models Meta-Llama-3-8B-Instruct Mistral-7B-Instruct-v0.1 Qwen3-8B
   python scripts/identify_stereotypical_axes.py test --axes stratified --models ... --head listing_n15 mean 128
   python scripts/identify_stereotypical_axes.py test --axes all --models ... --head listing_n15 mean 128
-  python scripts/identify_stereotypical_axes.py power --axes stratified --models ...
 """
 import argparse
 import json
@@ -362,40 +363,10 @@ def plot_agreement(g, path, title, label_axes=None):
     plt.close(fig)
 
 
-# ----------------------------------------------------------------------------- step 3: power
-def power(args):
-    """Post-hoc power at the observed sample sizes and the minimum detectable effect (MDE,
-    in pooled-SD units) of each KS test, by Monte Carlo simulation (as in the previous version)."""
-    proj = pd.read_csv(f"{args.out_dir}/stereotypicality_{args.axes}_projections.csv.gz")
-    rng = np.random.default_rng(args.seed)
-    rows = []
-    for (model, level, k, key), g in proj.groupby(["model", "level", "k", "key"]):
-        soc = g[g.set == "social"].projection.to_numpy()
-        rnd = g[g.set == "random"].projection.to_numpy()
-        pw = np.mean([ks_2samp(rng.choice(soc, len(soc)), rng.choice(rnd, len(rnd)))[1] < args.alpha
-                      for _ in range(args.n_sim)])
-        pooled, mde = np.concatenate([soc, rnd]), np.nan
-        for s in np.linspace(0, 2, 21):
-            hits = [ks_2samp(rng.choice(pooled, len(soc)),
-                             rng.choice(pooled, len(rnd)) + s * pooled.std(ddof=1))[1] < args.alpha
-                    for _ in range(args.n_sim // 2)]
-            if np.mean(hits) >= args.target_power:
-                mde = s
-                break
-        rows.append({"model": model, "level": level, "k": k, "key": key,
-                     "power_at_observed_n": pw, "mde_pooled_sd": mde})
-    df = pd.DataFrame(rows)
-    path = f"{args.out_dir}/stereotypicality_{args.axes}_power.xlsx"
-    df.to_excel(path, index=False)
-    print(df.groupby(["model", "level", "k"])[["power_at_observed_n", "mde_pooled_sd"]]
-          .median().round(3).to_string())
-    print(f"Saved {path}")
-
-
 # ----------------------------------------------------------------------------- main
 def main():
     ap = argparse.ArgumentParser(description="Stereotypicality identification of semantic axes (KS test).")
-    ap.add_argument("step", choices=["extract", "test", "power"])
+    ap.add_argument("step", choices=["extract", "test"])
     ap.add_argument("--axes", choices=["stratified", "all"], default="stratified",
                     help="stratified: the 100 annotated axes (with human comparison); all: 1,999 axes")
     ap.add_argument("--models", nargs="+", default=list(pp.MODELS), choices=list(pp.MODELS))
@@ -414,9 +385,6 @@ def main():
     ap.add_argument("--correction", choices=["none", "bh"], default="none",
                     help="multiple-testing correction across axes (bh = Benjamini-Hochberg)")
     ap.add_argument("--plot-axes", nargs="*", default=None, metavar="neg.a.NN|pos.a.NN")
-    ap.add_argument("--n-sim", type=int, default=1000)
-    ap.add_argument("--target-power", type=float, default=0.8)
-    ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--batch-size", type=int, default=32)
     ap.add_argument("--axis-batch", type=int, default=64,
                     help="semantic axes processed together (lower it if memory runs out)")
@@ -425,7 +393,7 @@ def main():
     ap.add_argument("--cache-dir", default="/content/cache" if os.path.isdir("/content") else "cache")
     ap.add_argument("--out-dir", default="results/stereotypicality")
     args = ap.parse_args()
-    {"extract": extract, "test": test, "power": power}[args.step](args)
+    {"extract": extract, "test": test}[args.step](args)
 
 
 if __name__ == "__main__":
