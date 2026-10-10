@@ -37,7 +37,7 @@ by their sign.
 [Words of Warmth: Trust and Sociability Norms for over 26k English Words](https://aclanthology.org/2025.acl-long.922/).
 ACL (Volume 1: Long Papers), pages 18830-18850.
 
-## Stereotypicality identification
+## Stereotypicality identification human
 
 Used for stereotypicality identification in `scripts/identify_stereotypical_axes.py`.
 
