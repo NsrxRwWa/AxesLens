@@ -127,7 +127,7 @@ def exclusion_reason(axis, min_zipf):
 def main():
     ap = argparse.ArgumentParser(description="Eligible pool of semantic axes relevant to humans.")
     ap.add_argument("--axes", default="data/processed/antonym_axes.json")
-    ap.add_argument("--min-zipf", type=float, default=3.0)
+    ap.add_argument("--min-zipf", type=float, default=2.0)
     ap.add_argument("--pool-out", default="eligible_pool.json")
     ap.add_argument("--annotations", default=None,
                     help="optional: annotation CSV, to check that the annotated axes are in the pool")
