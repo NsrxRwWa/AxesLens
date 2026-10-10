@@ -1,35 +1,34 @@
 #!/usr/bin/env python3
 """
-sample_stratified_axes.py
-=========================
-Builds the eligible pool of WordNet semantic axes and draws the stratified
-sample of 100 axes for human annotation, following Appendix B.2.1.
+build_eligible_pool.py
+======================
+Builds the eligible pool of WordNet semantic axes relevant to humans,
+following Appendix B.2.1.
 
 Steps
 -----
-1. Stratum assignment (BabelDomains labels of the two poles):
+1. Domain assignment (BabelDomains labels of the two poles):
      both poles Unknown              -> "Unknown"
      one pole labeled                -> that pole's label
      both poles with the same label  -> that label
      poles with different labels     -> discarded
    Labels are grouped into three strata: "Philosophy and psychology",
-   "Unknown", and "Technical domains" (all remaining domains).
+   "Unknown", and "Technical domains" (all remaining domains); the strata
+   are only reported, not sampled.
 2. Filters:
      (a) a pole word is a quantifier or determiner (more, fewer, all, ...)
      (b) a pole definition contains a parenthetical qualifier that does not
          refer to humans, e.g. "(of plants)", "(of mammals)"
      (c) a pole word has a Zipf frequency below --min-zipf (wordfreq)
-3. Stratified random sample with fixed quotas per stratum (default 34/33/33).
-   Pairs listed in --exclude (e.g. non-gradable pairs such as dead/alive) are
-   skipped and replaced by the next pair from the same stratum.
 
 Input : data/processed/antonym_axes.json   (scripts/build_antonym_axes.py)
-Output: eligible_pool.json, stratified_sample.json
+Output: eligible_pool.json  {axis key: axis text} of all axes that pass
 
 Usage
 -----
-  python scripts/sample_stratified_axes.py \
+  python scripts/build_eligible_pool.py \
       --axes data/processed/antonym_axes.json \
+      --pool-out data/processed/eligible_pool.json \
       --annotations data/raw/stereotypicality_annotations.csv
 
 Requirements: Python 3.8+, wordfreq.
@@ -38,9 +37,8 @@ Requirements: Python 3.8+, wordfreq.
 import argparse
 import csv
 import json
-import random
 import re
-from collections import Counter, defaultdict
+from collections import Counter
 
 from wordfreq import zipf_frequency
 
@@ -127,25 +125,18 @@ def exclusion_reason(axis, min_zipf):
 # Main
 # ---------------------------------------------------------------------------
 def main():
-    ap = argparse.ArgumentParser(description="Stratified sample of semantic axes.")
+    ap = argparse.ArgumentParser(description="Eligible pool of semantic axes relevant to humans.")
     ap.add_argument("--axes", default="data/processed/antonym_axes.json")
     ap.add_argument("--min-zipf", type=float, default=3.0)
-    ap.add_argument("--quotas", type=int, nargs=3, default=[34, 33, 33],
-                    metavar=("PSY", "UNK", "TECH"))
-    ap.add_argument("--seed", type=int, default=42)
-    ap.add_argument("--exclude", nargs="*", default=[],
-                    help="axis keys to skip and replace (non-gradable pairs)")
     ap.add_argument("--pool-out", default="eligible_pool.json")
-    ap.add_argument("--sample-out", default="stratified_sample.json")
     ap.add_argument("--annotations", default=None,
-                    help="optional: annotation CSV to compare the sample with")
+                    help="optional: annotation CSV, to check that the annotated axes are in the pool")
     args = ap.parse_args()
 
     with open(args.axes, encoding="utf-8") as f:
         raw = json.load(f)
     axes = [parse_axis(k, v) for k, v in raw.items()]
 
-    # --- step 1: strata before filtering
     before = Counter()
     pool, reasons = [], Counter()
     for ax in axes:
@@ -173,34 +164,15 @@ def main():
 
     with open(args.pool_out, "w", encoding="utf-8") as f:
         json.dump({ax["key"]: ax["text"] for ax in pool}, f, ensure_ascii=False, indent=2)
+    print(f"\nSaved {len(pool)} eligible axes to {args.pool_out}")
 
-    # --- step 3: stratified sample with fixed quotas
-    rng = random.Random(args.seed)
-    by_stratum = defaultdict(list)
-    for ax in pool:
-        by_stratum[ax["stratum"]].append(ax)
-    sample = []
-    for s, quota in zip(STRATA, args.quotas):
-        candidates = sorted(by_stratum[s], key=lambda a: a["key"])
-        rng.shuffle(candidates)
-        chosen = [a for a in candidates if a["key"] not in set(args.exclude)][:quota]
-        if len(chosen) < quota:
-            raise ValueError(f"Stratum {s}: only {len(chosen)} eligible axes for quota {quota}")
-        sample.extend(chosen)
-    print(f"\nSampled {len(sample)} axes "
-          f"({', '.join(f'{s}: {q}' for s, q in zip(STRATA, args.quotas))})")
-
-    with open(args.sample_out, "w", encoding="utf-8") as f:
-        json.dump({ax["key"]: ax["text"] for ax in sample}, f, ensure_ascii=False, indent=2)
-
-    # --- optional check against the annotated axes
+    # --- optional check: are all annotated axes in the pool?
     if args.annotations:
         with open(args.annotations, encoding="utf-8") as f:
             annotated = {row["axis_id"] for row in csv.DictReader(f)}
         pool_keys = {ax["key"] for ax in pool}
-        sample_keys = {ax["key"] for ax in sample}
         print(f"\nAnnotated axes: {len(annotated)} | in eligible pool: "
-              f"{len(annotated & pool_keys)} | in this sample: {len(annotated & sample_keys)}")
+              f"{len(annotated & pool_keys)}")
         for key in sorted(annotated - pool_keys):
             ax = next(a for a in axes if a["key"] == key)
             print(f"  not in pool: {ax['neg']}|{ax['pos']} "
