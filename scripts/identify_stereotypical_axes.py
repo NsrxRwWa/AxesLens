@@ -435,7 +435,7 @@ def main():
     ap.add_argument("--models", nargs="+", default=list(pp.MODELS), choices=list(pp.MODELS))
     ap.add_argument("--social", default="data/raw/social_groups.txt")
     ap.add_argument("--random", default="data/raw/random_phrases.txt")
-    ap.add_argument("--human", default="data/raw/stereotypicality_annotations.csv")
+    ap.add_argument("--human", default="data/raw/stereotypicality_annotations_human.csv")
     ap.add_argument("--base", default="data/processed/antonym_axes.json")
     ap.add_argument("--neutral-not-stereotypical", action="store_true",
                     help="count a neutral majority (rating 3) as non-stereotypical "
