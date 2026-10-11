@@ -14,7 +14,7 @@ Metrics (--metric)
             threshold (0.5 = chance); LLM-LLM agreement is then the Spearman correlation of
             the projections
   spearman  continuous: Spearman correlation of projections with continuous human scores
-            (needs --w-score-col and --c-score-col in the dataset file)
+            (found automatically in columns named "warmth ..." and "competence ...")
 
 Confidence intervals are bootstrapped over social groups (the sampled unit of the test set):
 each resample draws the terms with replacement and recomputes the mean over axes.
@@ -148,6 +148,9 @@ def load_terms(xlsx, w_score=None, c_score=None):
                              "Warmth": df["W sign (+1/-1)"].astype(int),
                              "Competence": df["C sign (+1/-1)"].astype(int)})
         for cat, col in [("Warmth", w_score), ("Competence", c_score)]:
+            if col == "auto":                     # first column named "warmth..." / "competence..."
+                found = [c for c in df.columns if str(c).strip().lower().startswith(cat.lower())]
+                col = found[0] if found else None
             if col:
                 part[f"{cat}_score"] = df[col].astype(float)
         parts.append(part)
@@ -720,10 +723,12 @@ def main():
     ap.add_argument("--metric", choices=list(METRICS), default="macro_f1",
                     help="macro_f1: binary sign prediction (paper); auc: continuous projections "
                          "vs. binary labels; spearman: vs. continuous human scores")
-    ap.add_argument("--w-score-col", default=None,
-                    help="spearman: column with continuous Warmth scores in the dataset file")
-    ap.add_argument("--c-score-col", default=None,
-                    help="spearman: column with continuous Competence scores in the dataset file")
+    ap.add_argument("--w-score-col", default="auto",
+                    help="spearman: column with continuous Warmth scores; 'auto' = first column "
+                         "whose name starts with 'warmth'")
+    ap.add_argument("--c-score-col", default="auto",
+                    help="spearman: column with continuous Competence scores; 'auto' = first "
+                         "column whose name starts with 'competence'")
     ap.add_argument("--n-boot", type=int, default=1000,
                     help="test: bootstrap resamples of social groups for the CIs")
     ap.add_argument("--warmth", default="data/processed/warmth_axes.json")
@@ -753,10 +758,11 @@ def main():
         return extract(args)                              # always all terms of the file
     if args.step == "plot":
         return plot_all(args)
-    if args.metric == "spearman" and not (args.w_score_col and args.c_score_col):
-        raise SystemExit("--metric spearman needs --w-score-col and --c-score-col")
     args.split = args.split or ("Test" if args.step == "test" else "Dev")
     terms = load_terms(args.wcst, args.w_score_col, args.c_score_col)
+    if args.metric == "spearman" and not {"Warmth_score", "Competence_score"} <= set(terms.columns):
+        raise SystemExit(f"--metric spearman needs continuous Warmth and Competence scores, "
+                         f"but {args.wcst} has no such columns (Fraser provides only quadrants)")
     if args.split not in set(terms.split):
         raise SystemExit(f"{args.wcst} has no '{args.split}' sheet")
     axes = load_axes(args.warmth, args.competence, args.base)
