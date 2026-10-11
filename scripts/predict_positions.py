@@ -464,6 +464,7 @@ def metric_of(df):
 
 def plot_selection_from_excel(path, split):
     summary = pd.read_excel(path, sheet_name="summary")
+    POSITIONS[:] = sorted(summary["position"].unique(), key=lambda x: x != "mean")
     M = metric_of(summary)
     base = read_baselines(path) if M == "macro_f1" else {c: CHANCE[M] for c in CATEGORIES}
     for level in summary.level.unique():
@@ -485,9 +486,12 @@ def plot_selection(summary, level, split, base, M, path):
                 for pos in POSITIONS:
                     s = summary[(summary.model == model) & (summary.category == cat)
                                 & (summary.config == config) & (summary.position == pos)].sort_values("k")
+                    if s.empty:
+                        continue
+                    pos_label = "" if len(POSITIONS) == 1 else f", {pos}"
                     ax.plot([ks.index(k) for k in s["k"]], s[M], marker="o", ms=4,
-                            color=colors[config],
-                            label=f"{config.replace('_n', ', n=').capitalize()}")
+                            color=colors[config], ls="-" if pos == "mean" else "--",
+                            label=f"{config.replace('_n', ', n=').capitalize()}{pos_label}")
             ax.set_xticks(range(len(ks)), [int(k) for k in ks])
             if cat in base:
                 ax.axhline(base[cat], color="gray", ls=":", lw=1)
@@ -496,7 +500,7 @@ def plot_selection(summary, level, split, base, M, path):
             ax.set_ylabel(f"{M} ({split})")
             ax.grid(alpha=0.3)
     handles, labels = axs[0, 0].get_legend_handles_labels()
-    fig.legend(handles, labels, loc="lower center", ncol=2, fontsize=8, frameon=False)
+    fig.legend(handles, labels, loc="lower center", ncol=4, fontsize=8, frameon=False)
     fig.tight_layout(rect=(0, 0.08, 1, 1))
     fig.savefig(path, dpi=200)
     plt.close(fig)
@@ -745,7 +749,7 @@ def main():
     ap.add_argument("--head-level", nargs="*", default=[], metavar="MODEL=LEVEL")
     ap.add_argument("--batch-size", type=int, default=32)
     ap.add_argument("--positions", nargs="+", default=["mean"], choices=["mean", "last"],
-                    help="extract: token positions to store (e.g. mean last)")
+                    help="extract / select: token positions to store or compare (e.g. mean last)")
     ap.add_argument("--split", choices=["Dev", "Test"], default=None,
                     help="terms to evaluate (default: Dev for select/prompts, Test for test)")
     ap.add_argument("--config", default="listing_n15", help="prompts: configuration")
@@ -760,6 +764,7 @@ def main():
     args.head_level_map = dict(x.split("=", 1) for x in args.head_level)
     os.makedirs(args.out_dir, exist_ok=True)
 
+    POSITIONS[:] = args.positions                         # extract / select: token positions
     if args.step == "extract":
         return extract(args)                              # always all terms of the file
     if args.step == "plot":
