@@ -211,6 +211,7 @@ def check_terms(args, short, n_terms):
 
 
 def extract(args):
+    POSITIONS[:] = args.positions                 # e.g. mean last
     terms = load_terms(args.wcst)["term"].tolist()
     items = [(t, p, PROMPTS[p].format(c=term)) for t, term in enumerate(terms)
              for p in range(len(PROMPTS))]
@@ -440,9 +441,12 @@ def select(args, terms, axes):
 
 
 def suffix(args):
-    """File-name suffix: dataset (if not Words of Warmth) and metric (if not macro-F1)."""
+    """File-name suffix: dataset (if not Words of Warmth), token position (if not mean)
+    and metric (if not macro-F1)."""
     stem = os.path.splitext(os.path.basename(args.wcst))[0]
+    pos = {args.head[1], args.layer[1]} if args.step == "test" else {args.position}
     return ("" if stem == "WCST_dataset" else f"_{stem}") + \
+           ("" if pos == {"mean"} else "_" + "-".join(sorted(pos))) + \
            ("" if args.metric == "macro_f1" else f"_{args.metric}")
 
 
@@ -740,6 +744,8 @@ def main():
     ap.add_argument("--levels", nargs="+", default=["head", "layer"], choices=list(LEVEL_GROUPS))
     ap.add_argument("--head-level", nargs="*", default=[], metavar="MODEL=LEVEL")
     ap.add_argument("--batch-size", type=int, default=32)
+    ap.add_argument("--positions", nargs="+", default=["mean"], choices=["mean", "last"],
+                    help="extract: token positions to store (e.g. mean last)")
     ap.add_argument("--split", choices=["Dev", "Test"], default=None,
                     help="terms to evaluate (default: Dev for select/prompts, Test for test)")
     ap.add_argument("--config", default="listing_n15", help="prompts: configuration")
