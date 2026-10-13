@@ -10,3 +10,5 @@
   `template` = `listing` | `simple` and `n` = `15` | `30` sentences per pole.
 
   `eligible_pool.json`: The 1,114 semantic axes relevant to humans.
+
+  `stratified_sample.json`: The 100 semantic axes sampled from the eligible pool for human annotation.
