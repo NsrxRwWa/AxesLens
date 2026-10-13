@@ -67,33 +67,23 @@ Input: `data/raw/WCST-final-dataset.xlsx` (sheets `Dev` and `Test`),
 geometric axes (downloaded automatically from the Hugging Face dataset and cached, or read
 from `--axes-dir`).
 
-Run (final results, as in the paper):
+Run:
 ```bash
 MODELS="Meta-Llama-3-8B-Instruct Mistral-7B-Instruct-v0.1 Qwen3-8B"
 python scripts/predict_positions.py extract --models $MODELS
 python scripts/predict_positions.py test --models $MODELS \
     --head listing_n15 mean 128 --layer listing_n15 mean 8
 ```
-
 ### `identify_stereotypical_axes.py`
 
-Tests for each semantic axis to determine whether it is stereotypical.
-Input: `data/raw/social_groups.txt`, `data/raw/random_phrases.txt`,
-`data/raw/stereotypicality_annotations.csv`, `data/processed/antonym_axes.json`,
-geometric axes from the Hugging Face repo (or `--axes-dir`).
-
-Run:
+Tests for each semantic axis to determine whether it is stereotypical
+(KS test, social groups vs. random phrases).
 
 ```bash
-# 1. activations of social groups and random phrases (once per model)
+# 1. activations (once per model)
 python scripts/identify_stereotypical_axes.py extract
 # 2. 100 stratified axes, compared with human labels
-python scripts/identify_stereotypical_axes.py test --axes stratified \
-    --head listing_n15 mean 128 --layer listing_n15 mean 8
-# 3. all 1,999 axes 
-python scripts/identify_stereotypical_axes.py test --axes all --correction bh \
-    --head listing_n15 mean 128 --layer listing_n15 mean 8
-# optional: power analysis
-python scripts/identify_stereotypical_axes.py power --axes stratified
-```
+python scripts/identify_stereotypical_axes.py test --axes stratified
+# 3. 1,114 relevant axes
+python scripts/identify_stereotypical_axes.py test --axes eligible
 
